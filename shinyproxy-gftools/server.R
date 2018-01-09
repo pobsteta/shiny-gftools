@@ -256,20 +256,22 @@ function(input, output, session) {
     if (input$update02 == 0) return(NULL)
     if (is.null(pointclick$clickedMarker$lat)) return(NULL)
     p <- plotdata()
-    zonemap <- sf::st_transform(p$Zone, crs = 4326)
-    placettesmap <- sf::st_transform(p$Placettes, crs = 4326)
-    popupzone <- paste0("<strong>SER: </strong>", p$Zone$codeser, " - ", p$Zone$NomSER)
-    popupplacettes <- paste0("<strong>Année : </strong>", p$Placettes$yrs, " - idp : ", p$Placettes$idp)
-    leaflet() %>%
-      setView(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, zoom = input$map0201_zoom - 3) %>%
-      addTiles() %>%
-      addDrawToolbar(
-        targetGroup='draw',
-        editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions())) %>%
-      addPolygons(data = zonemap, weight = 2, fillColor = "yellow", popup = popupzone) %>%
-      addCircles(data = placettesmap, popup=popupplacettes, weight = 3, radius=40,
-                 color="#1f27b4", stroke = TRUE) %>%
-      addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !")
+    if (!is.null(p$Placettes)) {
+      zonemap <- sf::st_transform(p$Zone, crs = 4326)
+      placettesmap <- sf::st_transform(p$Placettes, crs = 4326)
+      popupzone <- paste0("<strong>SER: </strong>", p$Zone$codeser, " - ", p$Zone$NomSER)
+      popupplacettes <- paste0("<strong>Année : </strong>", p$Placettes$yrs, " - idp : ", p$Placettes$idp)
+      leaflet() %>%
+        setView(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, zoom = input$map0201_zoom - 3) %>%
+        addTiles() %>%
+        addDrawToolbar(
+          targetGroup='draw',
+          editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions())) %>%
+        addPolygons(data = zonemap, weight = 2, fillColor = "yellow", popup = popupzone) %>%
+        addCircles(data = placettesmap, popup=popupplacettes, weight = 3, radius=40,
+                   color="#1f27b4", stroke = TRUE) %>%
+        addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !")
+    }
   })
 
   pointclick <- reactiveValues(clickedMarker = NULL)
