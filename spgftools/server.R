@@ -1,5 +1,3 @@
-
-
 function(input, output, session) {
   ########### Onglet 00 ##############################################
   output$Essences <- renderUI({

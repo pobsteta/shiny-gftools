@@ -1,4 +1,3 @@
-
 fluidPage(
   # shinythemes::themeSelector(),
   navbarPage(
@@ -125,11 +124,11 @@ fluidPage(
                             selected = "total"
                           ),
                           sliderInput(
-                            "Decemerge", "Decoupe EMERGE (dec):",
+                            "Decemerge", "Decoupe tige EMERGE (dec):",
                             min = 0, max = 80,
                             value = 7
                           ),
-                          helpText("Note: diamètre à la découpe."),
+                          helpText("Note: diamètre à la découpe tige."),
                           sliderInput(
                             "ClasseInf", "Classe Diam Arbre:",
                             min = 10, max = 120,
