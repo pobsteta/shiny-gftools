@@ -139,49 +139,58 @@ function(input, output, session) {
     input$update02
     updateTabsetPanel(session, "inTabset02", selected = "Plot")
   })
+  
+  # select tabpanel Map when click on mappoint
+  observe({
+    input$mappoint
+    updateTabsetPanel(session, "inTabset02", selected = "Map")
+  })
 
   plotdata <- reactive({
     input$update02
     if (input$update02 == 0) return(NULL)
     CodesEssIFN <- gftools::getData("IFNCODE") %>%
-      dplyr::filter(donnee %in% "ESPAR")
+        dplyr::filter(donnee %in% "ESPAR")
     isolate({
-      withCallingHandlers(
-        {
-          shinyjs::html(id = "text02", html = "Go ! ")
-          p <- gftools::TarifFindSch(
-            fichier = input$datafile$datapath, mercuriale = input$mercufile$datapath, enreg = F,
-            decemerge = input$Decemerge, classearbremin = input$ClasseInf[1],
-            mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
-            essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
-            latitude = input$latitude, longitude = input$longitude,
-            typvolemerge = input$Volcompare
-          )
-        },
-        message = function(m) {
-          shinyjs::html(id = "text02", html = m$message, add = TRUE)
-        },
-        warning = function(m) {
-          shinyjs::html(id = "text02", html = m$message, add = TRUE)
-        }
-      )
+      withProgress(message = 'Calculs en cours', style = 'notification', value = 0.75, {
+        Sys.sleep(0.25)
+        withCallingHandlers(
+          {
+            shinyjs::html(id = "text02", html = "Go ! ")
+            p <- gftools::TarifFindSch(
+              fichier = input$datafile$datapath, mercuriale = input$mercufile$datapath, enreg = F,
+              decemerge = input$Decemerge, classearbremin = input$ClasseInf[1],
+              mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
+              essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
+              latitude = input$latitude, longitude = input$longitude,
+              typvolemerge = input$Volcompare,
+              zonecalc = zonecalcul()
+            )
+          },
+          message = function(m) {
+            shinyjs::html(id = "text02", html = m$message, add = TRUE)
+          },
+          warning = function(m) {
+            shinyjs::html(id = "text02", html = m$message, add = TRUE)
+          }
+        )
+      })
+      incProgress(0.8)
     })
-  })
-
-  output$plotcsv6 <- renderPlot({
-    input$update02
-    if (input$update02 == 0) return(NULL)
-    isolate({
-      p <- plotdata()
-      p$Graphe6
-    })
+    incProgress(1)
+    p
   })
 
   output$plotcsv1 <- renderPlot({
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      p <- plotdata()
+      withProgress(message = 'Création du graphique (1/6)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(0.8)
+      })
+      incProgress(1)
       p$Graphe1
     })
   })
@@ -190,7 +199,12 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      p <- plotdata()
+      withProgress(message = 'Création du graphique (2/6)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(0.8)
+      })
+      incProgress(1)
       p$Graphe2
     })
   })
@@ -199,7 +213,12 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      p <- plotdata()
+      withProgress(message = 'Création du graphique (3/6)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(0.8)
+      })
+      incProgress(1)
       p$Graphe3
     })
   })
@@ -208,7 +227,12 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      p <- plotdata()
+      withProgress(message = 'Création du graphique (4/6)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(0.8)
+      })
+      incProgress(1)
       p$Graphe4
     })
   })
@@ -217,8 +241,27 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      p <- plotdata()
+      withProgress(message = 'Création du graphique (5/6)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(0.8)
+      })
+      incProgress(1)
       p$Graphe5
+    })
+  })
+  
+  output$plotcsv6 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = 'Création du graphique (6/6)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(0.8)
+      })
+      incProgress(1)
+      p$Graphe6
     })
   })
 
@@ -234,21 +277,177 @@ function(input, output, session) {
         mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
         essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
         latitude = input$latitude, longitude = input$longitude,
-        typvolemerge = input$Volcompare
+        typvolemerge = input$Volcompare,
+        zonecalc = zonecalcul()
       )
       p$Tableau1
     })
   })
+  
+  label <- reactive({
+    if(input$parcelle != '82') {
+      shinyjs::disable("samples")
+      label <- "Samples (0)"
+    } else {
+      shinyjs::enable("samples")
+      label <- "Samples (*)"
+    }
+  })
+  
+  output$samples <- renderUI({
+    actionButton("samples", label = label(), class="btn btn-primary")
+  })
 
+  output$latitude <- renderUI({
+    input$mappoint
+    frt <- polyfrt()
+    numericInput("latitude", "Latitude :", pointclick$clickedMarker$lat)
+  })
+
+  output$longitude <- renderUI({
+    input$mappoint
+    frt <- polyfrt()
+    numericInput("longitude", "Longitude :", pointclick$clickedMarker$lng)
+  })
+  
+  outAGC = reactive({
+    agc <- agencedata %>%
+      filter(grepl(input$dt, iidtn_agc))
+    agc$iidtn_agc
+  })
+  
+  outFRT = reactive({
+   frt <- forestdata %>%
+     filter(ccod_cact == input$agence)
+   frt$ccod_frt
+  })
+  
+  outPRF = reactive({
+    prf <- parcelledata %>%
+      filter(ccod_frt == input$forest, ccod_cact == input$agence)
+    prf$ccod_prf
+  })
+  
+  outPST = reactive({
+    pst <- pstdata %>%
+      filter(grepl(input$agence, ccod_cact))
+    pst$ccod_ut
+  })
+  
+  output$pst <- renderUI({
+    selectizeInput("pst", "UT :", choices = outPST(), multiple = TRUE, 
+                   options = list(placeholder = 'Choisir'))
+  })
+  
+  observeEvent(input$dt, {
+    updateSelectInput(session, "agence", choices = c(Choisir='', outAGC()))
+  })
+  
+  observeEvent(input$agence, {
+    updateSelectInput(session, "forest", choices = c(Choisir='', outFRT()))
+  })
+  
+  observeEvent(input$forest, {
+    updateSelectInput(session, "parcelle", choices = c(Choisir='', outPRF()))
+  })
+  
+  polydt <- reactive({
+    polydt <- dtdata %>%
+      filter(iidtn_dt == input$dt) 
+    polydt
+  })
+  
+  observeEvent(input$dt, {
+    dt <- polydt()
+    if (!is.null(input$dt)) {
+      dt <- st_centroid(dt) %>%
+        st_geometry()
+      leafletProxy('map0201') %>%
+        setView(lat = st_coordinates(dt)[2], lng = st_coordinates(dt)[1], zoom = 8)
+    }
+  })
+  
+  polyagc <- reactive({
+    polyagc <- agencedata %>%
+      filter(iidtn_agc == input$agence) 
+    polyagc
+  })
+  
+  observeEvent(input$agence, {
+    agc <- polyagc()
+    if (!is.null(input$agence)) {
+      agc <- st_centroid(agc) %>%
+        st_geometry()
+      leafletProxy('map0201') %>%
+        setView(lat = st_coordinates(agc)[2], lng = st_coordinates(agc)[1], zoom = 10)
+    }
+  })
+  
+  polyfrt <- reactive({
+    polyfrt <- forestdata %>%
+      filter(ccod_frt == input$forest) 
+    polyfrt
+  })
+  
+  observeEvent(input$forest, {
+    frt <- polyfrt()
+    if (!is.null(input$forest)) {
+      frt <- st_centroid(frt) %>%
+        st_geometry()
+      leafletProxy('map0201') %>%
+        setView(lat = st_coordinates(frt)[2], lng = st_coordinates(frt)[1], zoom = 12)
+    }
+  })
+  
+  polyprf <- reactive({
+    polyfrt <- parcelledata %>%
+      filter(ccod_prf == input$parcelle, ccod_frt == input$forest)
+    polyfrt
+  })
+  
+  observeEvent(input$parcelle, {
+    prf <- polyprf()
+    if (!is.null(input$parcelle)) {
+      prf <- st_centroid(prf) %>%
+        st_geometry()
+      leafletProxy('map0201') %>%
+        setView(lat = st_coordinates(prf)[2], lng = st_coordinates(prf)[1], zoom = 14)
+    }
+  })
+  
+  polypst <- reactive({
+    polypst <- pstdata %>%
+      filter(ccod_ut == input$pst)
+    polypst
+  })
+  
+  observeEvent(input$pst, {
+    pst <- polypst()
+    if (!is.null(input$pst)) {
+      pst <-st_centroid(st_convex_hull(st_union(pst))) %>%
+        st_geometry()
+      leafletProxy('map0201') %>%
+        setView(lat = st_coordinates(pst)[2], lng = st_coordinates(pst)[1], zoom = 10)
+    }
+  })
+  
   output$map0201 <- renderLeaflet({
+    agc <- polyagc()
+    popupagc <- paste0("<strong>", agc$iidtn_agc, " - ", agc$llib_agc, "</strong>")
+    frt <- polyfrt()
+    popupfrt <- paste0("<strong>", frt$llib2_frt, "</strong>")
+    prf <- polyprf()
+    popupprf <- paste0("<strong>Parcelle : </strong>", prf$ccod_prf)
     leaflet() %>%
       setView(lat = 47.08, lng = 5.68, zoom = 6) %>%
       addTiles() %>%
-      addEasyButton(easyButton(
-        icon="fa-crosshairs", title="Localisation du calcul !",
-        onClick=JS("function(btn, map){ map.locate({setView: true}); }")))
+      addPolygons(data = polyfrt(), weight = 2, color = 'green', fillColor = 'green', popup = popupfrt, group = "Forêt") %>%
+      addPolygons(data = polyprf(), weight = 2, color = 'red', fillColor = 'red', popup = popupprf, group = "Parcelle") %>%
+      addLayersControl(overlayGroups = c("Forêt", "Parcelle"), options = layersControlOptions(collapsed = TRUE))
   })
-
+  
+  pointclick <- reactiveValues(clickedMarker = NULL)
+  
   output$map0202 <- renderLeaflet({
     input$update02
     if (input$update02 == 0) return(NULL)
@@ -256,30 +455,45 @@ function(input, output, session) {
     p <- plotdata()
     zonemap <- sf::st_transform(p$Zone, crs = 4326)
     placettesmap <- sf::st_transform(p$Placettes, crs = 4326)
-    popupzone <- paste0("<strong>SER: </strong>", p$Zone$codeser, " - ", p$Zone$NomSER)
+    popupzone <- paste0("<strong>", p$Zone$couche, " (id/nom) : </strong>", p$Zone$id, "/", p$Zone$name)
     popupplacettes <- paste0("<strong>Année : </strong>", p$Placettes$yrs, " - idp : ", p$Placettes$idp)
     leaflet() %>%
       setView(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, zoom = input$map0201_zoom - 3) %>%
       addTiles() %>%
-      addDrawToolbar(
-        targetGroup='draw',
-        editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions())) %>%
-      addPolygons(data = zonemap, weight = 2, fillColor = "yellow", popup = popupzone) %>%
-      addCircles(data = placettesmap, popup=popupplacettes, weight = 3, radius=40,
-                 color="#1f27b4", stroke = TRUE) %>%
-      addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !")
+      # addDrawToolbar(
+      #   targetGroup='draw',
+      #   editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions())) %>%
+      addPolygons(data = zonemap, weight = 2, fillColor = "yellow", popup = popupzone, group = "Zone de calcul") %>%
+      addCircles(data = placettesmap, popup=popupplacettes, weight = 3, radius = 60, color = '#ff00e6', fill = TRUE, stroke = TRUE, fillOpacity = 0.1, group = "Placette IFN") %>%
+      addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !") %>%
+      addLayersControl(overlayGroups = c("Zone de calcul", "Placette IFN"), options = layersControlOptions(collapsed = TRUE))
   })
-
-  pointclick <- reactiveValues(clickedMarker = NULL)
-
-  output$latitude <- renderUI({
-    input$mappoint
-    numericInput("latitude", "Latitude:", pointclick$clickedMarker$lat)
-  })
-
-  output$longitude <- renderUI({
-    input$mappoint
-    numericInput("longitude", "Longitude:", pointclick$clickedMarker$lng)
+  
+  zonecalcul <- eventReactive({
+    input$update02
+  }, {
+      txt <- paste0("'", input$zonecalc, "' as couche, ")
+      if (input$zonecalc == 'ser') {
+        txt <- paste0(txt, " name, id,")
+      } else if (input$zonecalc == 'rn250') {
+        txt <- paste0(txt, " regionn as name, id,")
+      } else if (input$zonecalc == 'rf250') {
+        txt <- paste0(txt, " regiond as name, id,")
+      } else if (input$zonecalc == 'pst') {
+        txtpst <- paste0("WITH w2 AS (WITH w1 AS (SELECT clib_pst AS name, ccod_ut AS id, geom FROM pst WHERE ccod_ut::integer IN (", paste(input$pst, collapse=","), 
+                         ")) SELECT name, id, st_union(geom) AS geom FROM w1 GROUP BY name, id)")
+      }
+      if (input$zonecalc != 'pst') {
+        BDDQueryONF(query = paste0("SELECT ", txt, " geom FROM ", 
+                                 input$zonecalc, " s WHERE st_dwithin(st_transform(st_setsrid(st_makepoint(",
+                                 pointclick$clickedMarker$lng, ",",
+                                 pointclick$clickedMarker$lat, "),4326),2154), s.geom,0)")) %>%
+        sf::st_transform(crs=2154)
+      } else {
+        print(paste0(txtpst, " SELECT ", txt, "string_agg(name, ',') AS name, string_agg(id, ',') AS id, st_union(geom) AS geom FROM w2"))
+        BDDQueryONF(query = paste0(txtpst, " SELECT ", txt, "string_agg(name, ',') AS name, string_agg(id, ',') AS id, st_union(geom) AS geom FROM w2")) %>%
+          sf::st_transform(crs=2154)
+      }
   })
 
   observeEvent(input$map0201_click, {
@@ -292,27 +506,32 @@ function(input, output, session) {
       ) %>%
       setView(lng = pointclick$clickedMarker$lng, lat = pointclick$clickedMarker$lat, input$map0201_zoom)
   })
-
+  
   # Resvol
   output$Resvol <- renderText({
     input$update02
     if (input$update02 == 0) return(NULL)
     if (is.null(filemercu())) return(NULL)
     if (is.null(filedata())) return(NULL)
-    res <- gftools::describeBy(tabdata(), group = tabdata()$Essence)
+    withProgress(message = 'Comparaison des résultats', style = 'notification', value = 0.5, {
+      Sys.sleep(0.25)
+      resv <- gftools::describeBy(tabdata(), group = tabdata()$Essence)
+      incProgress(1)
+    })
     Txt <- ""
-    for (r in length(res):1) {
+    for (r in length(resv):1) {
       Txt <- paste0(
-        "Pour l'essence ", names(res[r]), ": l'estimation bois fort tige commerciale ONF cube ", round(100 * (res[[r]]["L_VbftigCom", "sum"] / res[[r]]["E_VbftigCom", "sum"] - 1), 0),
-        "% du volume bois fort tige commercial EMERGE,\n- le volume bois fort tige commercial (L_VbftigCom) LOCAL de l'échantillon est de ", res[[r]]["L_VbftigCom", "sum"],
-        " m3, le volume bois fort tige commercial (E_VbftigCom) EMERGE de l'échantillon est de ", res[[r]]["E_VbftigCom", "sum"],
-        " m3,\n- le volume houppier (L_VHouppiers) LOCAL de l'échantillon est de ", res[[r]]["L_VHouppiers", "sum"],
+        "Pour l'essence ", names(resv[r]), ", l'estimation ONF cube ", round(100 * (resv[[r]]["L_VbftigCom", "sum"] / resv[[r]]["E_VbftigCom", "sum"] - 1), 0),
+        "% du volume bois fort tige commercial EMERGE et ", round(100 * (resv[[r]]["L_Vbftot7cm", "sum"] / resv[[r]]["E_Vbftot7cm", "sum"] - 1), 0), 
+        "% du volume bois fort total EMERGE :\n- le volume bois fort tige commercial (L_VbftigCom) LOCAL de l'échantillon est de ", resv[[r]]["L_VbftigCom", "sum"],
+        " m3, le volume bois fort tige commercial (E_VbftigCom) EMERGE de l'échantillon est de ", resv[[r]]["E_VbftigCom", "sum"],
+        " m3,\n- le volume houppier (L_VHouppiers) LOCAL de l'échantillon est de ", resv[[r]]["L_VHouppiers", "sum"],
         " m3, le volume houppier (E_VHouppiers) EMERGE de l'échantillon est de ",
-        round(res[[r]]["E_Vbftot7cm", "sum"] - res[[r]]["E_VbftigCom", "sum"], 2),
+        round(resv[[r]]["E_Vbftot7cm", "sum"] - resv[[r]]["E_VbftigCom", "sum"], 2),
         " m3,\n- soit un pourcentage de houppiers moyen LOCAL de l'échantillon (L_PHouppiers) de ",
-        round(100 * res[[r]]["L_PHouppiers", "mean"], 0),
+        round(100 * resv[[r]]["L_PHouppiers", "mean"], 0),
         "%, et un pourcentage de houppiers moyen EMERGE de l'échantillon (E_PHouppiers) de ",
-        round(100 * res[[r]]["E_PHouppiers", "mean"], 0), "%.\n", Txt
+        round(100 * resv[[r]]["E_PHouppiers", "mean"], 0), "%.\n", Txt
       )
     }
     return(Txt)
@@ -324,7 +543,12 @@ function(input, output, session) {
     if (input$update02 == 0) return(NULL)
     if (is.null(filemercu())) return(NULL)
     if (is.null(filedata())) return(NULL)
-    gftools::describeBy(tabdata(), group = tabdata()$Essence)
+    withProgress(message = 'Tableau des résultats', style = 'notification', value = 0.5, {
+      Sys.sleep(0.25)
+      resv <- gftools::describeBy(tabdata(), group = tabdata()$Essence)
+      incProgress(1)
+    })
+    resv
   })
 
   output$show_vars <- renderUI({
@@ -338,13 +562,38 @@ function(input, output, session) {
     data <- tabdata()
     DT::datatable(data[, input$show_vars, drop = FALSE], options = list(pageLength = 10))
   })
-
-  # Generate an HTML table view of the mercuriale data
-  output$tablecsv2 <- DT::renderDataTable(
-    filemercu(), options = list(
-      pageLength = 15
-    ), server = FALSE
+  
+  # save data
+  output$saveBtnData <- downloadHandler( 
+    # Nom par défaut :
+    filename = function() {
+      paste0("Data_", Sys.Date(), ".csv")
+    },
+    content = function(file) {
+      write.csv2(tabdata(), file, row.names = FALSE) 
+    }
   )
+  
+  # save mercuriale
+  output$saveBtnMercu <- downloadHandler(
+    # Nom par défaut :
+    filename = function() {
+      paste0('Mercu_', Sys.Date(), '.csv')
+    },
+    content = function(file) {
+      write.csv(filemercu(), file, row.names = FALSE)
+    }
+  )
+  
+  output$hot = renderRHandsontable({
+    if (!is.null(input$hot)) {
+      DF = hot_to_r(input$hot)
+    } else {
+      DF = filemercu()
+    }
+    rhandsontable(DF) %>%
+      hot_table(highlightCol = TRUE, highlightRow = TRUE)
+  })
 
   ########## Onglet 03 ##############################################
   # This function is repsonsible for loading in the selected zip file

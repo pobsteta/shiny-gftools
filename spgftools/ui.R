@@ -143,9 +143,7 @@ fluidPage(
                             class = "btn btn-primary"
                           ),
                           checkboxInput("mappoint", " Utiliser data IFN", FALSE),
-                          conditionalPanel("input.mappoint", uiOutput("Essences02")),
-                          conditionalPanel("input.mappoint", uiOutput("latitude")),
-                          conditionalPanel("input.mappoint", uiOutput("longitude"))
+                          conditionalPanel("input.mappoint", uiOutput("Essences02"))
         ),
         conditionalPanel(condition='input.inTabset02 == "Data"',
                          uiOutput("show_vars")
@@ -190,23 +188,88 @@ fluidPage(
             )
           ),
           tabPanel("Summary",
-            verbatimTextOutput("Resvol"),
-            verbatimTextOutput("summarycsv")
+                   verbatimTextOutput("Resvol"),
+                   verbatimTextOutput("summarycsv")
           ),
           tabPanel("Data",
+                   fluidRow(
+                     column(12,
+                            fluidRow(column(7,
+                                    h2("Cliquez sur save pour sauvegarder le tableau")
+                            ),
+                            br(),
+                            column(5,
+                                   downloadButton(
+                                     "saveBtnData", "Save",
+                                     class = "btn btn-primary"
+                                   ))
+                            )
+                     )),
                    DT::dataTableOutput("tablecsv1")),
           tabPanel("Mercuriale",
-                   DT::dataTableOutput("tablecsv2")),
+                   fluidRow(
+                     column(12,
+                            fluidRow(column(7,
+                                     h2("Modifiez la mercuriale, cliquez sur save pour la sauvegarder")
+                            ),
+                            br(),
+                            column(5,
+                                   downloadButton(
+                                    "saveBtnMercu", "Save",
+                                    class = "btn btn-primary"
+                                  ))
+                           )
+                     )),
+                   rHandsontableOutput("hot")),
           tabPanel("Map",
             h1("Cliquez sur la carte pour centrer la position des calculs"),
             fluidRow(
               column(
+                width = 1,
+                conditionalPanel("input.mappoint", selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt)))
+              ),
+              column(
+                width = 1,
+                conditionalPanel("input.mappoint && input.dt", selectInput("agence", "Agence :", c(Choisir='')))
+              ),
+              column(
+                width = 2,
+                conditionalPanel("input.agence && input.mappoint && input.dt", selectInput("forest", "Forêt :", c(Choisir='')))
+              ),
+              column(
+                width = 1,
+                conditionalPanel("input.forest && input.mappoint && input.agence && input.dt", selectInput("parcelle", "Parcelle :", c(Choisir='')))
+              ),
+              column(
+                width = 1,
+                useShinyjs(),
+                conditionalPanel("input.forest && input.mappoint && input.agence && input.dt", uiOutput("samples")),
+                conditionalPanel("input.forest && input.mappoint && input.agence && input.dt", selectInput("liste", NULL, c(Choisir='')))
+              ),
+              column(
+                width = 2,
+                conditionalPanel("input.mappoint", uiOutput("latitude"))
+              ),
+              column(
+                width = 2,
+                conditionalPanel("input.mappoint", uiOutput("longitude"))
+              ),
+              column(
+                width = 1,
+                conditionalPanel("input.mappoint", selectInput("zonecalc", "Zone calcul :", c('ser','rn250','rf250', 'pst')))
+              ),
+              column(
+                width = 1,
+                conditionalPanel("input.zonecalc == 'pst' && input.mappoint", uiOutput("pst"))
+              )),
+            fluidRow(
+              column(
                 width = 6,
-                leafletOutput("map0201", width=700, height = 700)
+                leafletOutput("map0201", width=730, height = 700)
               ),
               column(
                 width = 6,
-                leafletOutput("map0202", width=700, height = 700)
+                leafletOutput("map0202", width=730, height = 700)
               )
             )
           )
@@ -310,7 +373,7 @@ fluidPage(
       draggable = F,
       width = "100%",
       height = "auto",
-      p(a(icon("github fa-2x"), href = "https://github.com/pobsteta/gftools", target = "_blank"))
+      p(a(icon("github fa-2x"), href = "https://github.com/pobsteta/shinyproxy-gftools#boards?repos=116554829", target = "_blank"))
     )
   )
 )
