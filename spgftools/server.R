@@ -89,40 +89,53 @@ function(input, output, session) {
   })
 
   ########### Onglet 02 ##############################################
+  
+  observeEvent(input$datafile, {
+    updateTextInput(session, "nomData", value = substr(input$datafile$name,1,nchar(input$datafile$name)-4))
+    updateTabsetPanel(session, "inTabset02", selected = "Graphe")
+    })
+
+  observeEvent(input$mercufile, {
+    updateTextInput(session, "nomMercu", value = substr(input$mercufile$name,1,nchar(input$mercufile$name)-4))
+    updateTabsetPanel(session, "inTabset02", selected = "Graphe")
+  })
+    
   # fichier des data
   filedata <- reactive({
-    infile <- input$datafile
-    if (is.null(infile)) return(NULL)
-    readr::read_tsv(
-      infile$datapath,
+    datafile <- input$datafile
+    if (is.null(datafile)) return(NULL)
+    dataf <<- readr::read_tsv(
+      datafile$datapath,
       locale = readr::locale(encoding = "UTF-8", decimal_mark = ","),
-      readr::cols(Essence = readr::col_character(), Diam = readr::col_integer(), Htot = readr::col_double(), Hdec = readr::col_double()),
-      col_names = T
-    )
+      readr::cols(essence = readr::col_character(), diam = readr::col_integer(), htot = readr::col_double(), hdec = readr::col_double()),
+      col_names = T)
+    readr::write_tsv(dataf, fname)
+    print(paste("filedata:", fname))
+    output$datahot <<- renderRHandsontable({
+      rhandsontable(dataf, readOnly = TRUE, width = 280, height = 500) %>%
+        hot_cols(rowHeaderWidth = 100) %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+    dataf
   })
 
-  # fichier mercuriale
+  # fichier des mercuriales
   filemercu <- reactive({
-    infile <- input$mercufile
-    if (is.null(infile)) return(NULL)
-    readr::read_tsv(
-      infile$datapath,
+    mercufile <- input$mercufile
+    if (is.null(mercufile)) return(NULL)
+    mercu <<- readr::read_tsv(
+      mercufile$datapath,
       locale = readr::locale(encoding = "UTF-8", decimal_mark = ","),
-      readr::cols(Cdiam = readr::col_integer(), Tarif = readr::col_character(), Houppier = readr::col_integer(), Hauteur = readr::col_double()),
-      col_names = T
-    )
-  })
-
-  # Tartypvol
-  output$Tartypvol <- renderText({
-    if (is.null(filemercu())) return(NULL)
-    Tar <- unique(filemercu()$Tarif)
-    Tar <- Tar[!is.na(Tar)]
-    Tab <- ListTarONF2[which(ListTarONF2$sibois %in% Tar), c("ess", "TypeVol_tar", "dom_const", "TypeVol_tar", "DefVol", "diam_echant", "haut_echant", "entr1", "entr2", "sibois")]
-    Txt <- paste0(
-      Tab$sibois, " (", Tab$dom_const, "), est un tarif pour les essences (", Tab$ess, "),\n pour les diamètres de ", Tab$diam_echant,
-      " cm, pour les hauteurs de ", Tab$haut_echant, " m,\n nécessite ", Tab$entr1, " et ", Tab$entr2, " et renvoi un ", Tab$DefVol, " (", Tab$TypeVol_tar, ").\n"
-    )
+      readr::cols(cdiam = readr::col_integer(), tarif = readr::col_character(), houppier = readr::col_integer(), hauteur = readr::col_double()),
+      col_names = T)
+    readr::write_tsv(mercu, mname)
+    print(paste("filemercu:", mname))
+    output$mercuhot <<- renderRHandsontable({
+      rhandsontable(mercu, width = 280, height = 500) %>%
+        hot_cols(colWidths = 53) %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+    mercu
   })
 
   output$Essences02 <- renderUI({
@@ -137,7 +150,7 @@ function(input, output, session) {
   # select tabpanel Plot when click on update02
   observe({
     input$update02
-    updateTabsetPanel(session, "inTabset02", selected = "Plot")
+    updateTabsetPanel(session, "inTabset02", selected = "Graphe")
   })
   
   # select tabpanel Map when click on mappoint
@@ -158,13 +171,14 @@ function(input, output, session) {
           {
             shinyjs::html(id = "text02", html = "Go ! ")
             p <- gftools::TarifFindSch(
-              fichier = input$datafile$datapath, mercuriale = input$mercufile$datapath, enreg = F,
+              fichier = fname, mercuriale = mname, enreg = F,
               decemerge = input$Decemerge, classearbremin = input$ClasseInf[1],
               mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
               essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
               latitude = input$latitude, longitude = input$longitude,
               typvolemerge = input$Volcompare,
-              zonecalc = zonecalcul()
+              zonecalc = zonecalcul(),
+              houppier = mhouppier
             )
           },
           message = function(m) {
@@ -175,9 +189,9 @@ function(input, output, session) {
           }
         )
       })
-      incProgress(0.8)
+      incProgress(1)
     })
-    incProgress(1)
+    mhouppier <<- 'N'
     p
   })
 
@@ -185,12 +199,11 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = 'Création du graphique (1/6)', style = 'notification', value = 0.5, {
+      withProgress(message = 'Création du graphique (1/12)', style = 'notification', value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
-        incProgress(0.8)
+        incProgress(1)
       })
-      incProgress(1)
       p$Graphe1
     })
   })
@@ -199,12 +212,11 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = 'Création du graphique (2/6)', style = 'notification', value = 0.5, {
+      withProgress(message = 'Création du graphique (2/12)', style = 'notification', value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
-        incProgress(0.8)
+        incProgress(1)
       })
-      incProgress(1)
       p$Graphe2
     })
   })
@@ -213,12 +225,11 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = 'Création du graphique (3/6)', style = 'notification', value = 0.5, {
+      withProgress(message = 'Création du graphique (3/12)', style = 'notification', value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
-        incProgress(0.8)
+        incProgress(1)
       })
-      incProgress(1)
       p$Graphe3
     })
   })
@@ -227,12 +238,11 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = 'Création du graphique (4/6)', style = 'notification', value = 0.5, {
+      withProgress(message = 'Création du graphique (4/12)', style = 'notification', value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
-        incProgress(0.8)
+        incProgress(1)
       })
-      incProgress(1)
       p$Graphe4
     })
   })
@@ -241,12 +251,11 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = 'Création du graphique (5/6)', style = 'notification', value = 0.5, {
+      withProgress(message = 'Création du graphique (5/12)', style = 'notification', value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
-        incProgress(0.8)
+        incProgress(1)
       })
-      incProgress(1)
       p$Graphe5
     })
   })
@@ -255,47 +264,91 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = 'Création du graphique (6/6)', style = 'notification', value = 0.5, {
+      withProgress(message = 'Création du graphique (6/12)', style = 'notification', value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
-        incProgress(0.8)
+        incProgress(1)
       })
-      incProgress(1)
       p$Graphe6
     })
   })
-
-  tabdata <- reactive({
+  
+  output$plotcsv7 <- renderPlot({
     input$update02
     if (input$update02 == 0) return(NULL)
-    CodesEssIFN <- gftools::getData("IFNCODE") %>%
-      dplyr::filter(donnee %in% "ESPAR")
     isolate({
-      p <- gftools::TarifFindSch(
-        fichier = input$datafile$datapath, mercuriale = input$mercufile$datapath, enreg = F,
-        decemerge = input$Decemerge, classearbremin = input$ClasseInf[1],
-        mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
-        essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
-        latitude = input$latitude, longitude = input$longitude,
-        typvolemerge = input$Volcompare,
-        zonecalc = zonecalcul()
-      )
-      p$Tableau1
+      withProgress(message = 'Création du graphique (7/12)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe7
     })
   })
   
-  label <- reactive({
-    if(input$parcelle != '82') {
-      shinyjs::disable("samples")
-      label <- "Samples (0)"
-    } else {
-      shinyjs::enable("samples")
-      label <- "Samples (*)"
-    }
+  output$plotcsv8 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = 'Création du graphique (8/12)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe8
+    })
   })
   
-  output$samples <- renderUI({
-    actionButton("samples", label = label(), class="btn btn-primary")
+  output$plotcsv9 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = 'Création du graphique (9/12)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe9
+    })
+  })
+  
+  output$plotcsv10 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = 'Création du graphique (10/12)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe10
+    })
+  })
+  
+  output$plotcsv11 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = 'Création du graphique (11/12)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe11
+    })
+  })
+  
+  output$plotcsv12 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = 'Création du graphique (12/12)', style = 'notification', value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe12
+    })
   })
 
   output$latitude <- renderUI({
@@ -335,8 +388,139 @@ function(input, output, session) {
   })
   
   output$pst <- renderUI({
-    selectizeInput("pst", "UT :", choices = outPST(), multiple = TRUE, 
-                   options = list(placeholder = 'Choisir'))
+    selectizeInput("pst", NULL, choices = outPST(), multiple = TRUE, 
+                   options = list(placeholder = 'Choisir PST'))
+  })
+  
+  outDATA = reactive({
+    ssample <- files %>%
+      filter(dt == input$dt, agence == input$agence, forest == input$forest, parcelle == input$parcelle)
+    if (length(ssample$id) > 0) {
+      data <- filed %>%
+        filter(sample == ssample$id)
+      return(data$name)
+    } else {
+      return(NULL)
+    }
+  })
+  
+  outMERCU = reactive({
+    mfile <- filed %>%
+      filter(grepl(input$listedata, name))
+    if (length(mfile$id) > 0) {
+      mercu <- filem %>%
+        filter(id %in% mfile$id)
+      if (length(mercu$id) > 0) {
+        return(mercu$name)
+      } else {
+        return(NULL)
+      }
+    } else {
+      return(NULL)
+    }
+  })
+  
+  observeEvent(input$parcelle, {
+    updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', outDATA()))
+  })
+  
+  observeEvent(input$listedata, {
+    if (!is.null(input$listemercu)) {
+      # recherche l identifiant du sample
+      dt <- dtdata %>% filter(iidtn_dt == input$dt)
+      frt <- forestdata %>% filter(ccod_frt == input$forest)
+      agc <- agencedata %>% filter(iidtn_agc == input$agence)
+      prf <- parcelledata %>% filter(ccod_cact == input$agence, ccod_frt == input$forest, ccod_prf == input$parcelle)
+      query <- sprintf(
+        "SELECT id FROM sample WHERE dt=%s AND agence=%s AND forest=%s AND parcelle=%s",
+        dt$id, agc$id, frt$id, prf$id
+      )
+      sid <- loadData(query = query)
+      if (!is.null(sid)) {
+        # recherche l identifiant du datafile
+        query <- sprintf(
+          "SELECT id FROM filedata WHERE sample=%s AND name='%s'",
+          sid[[1]], input$listedata
+        )
+        did <- loadData(query = query)
+        # recherche les data du datafile si existe
+        if (!is.null(did)) {
+            if (nrow(did) > 0) {
+              query <- sprintf(
+                "SELECT essence, diam, htot, hdec FROM datadata WHERE filedata=%s",
+                did[[1]]
+              )
+              ddata <- loadData(query = query)
+              if (!is.null(ddata)) {
+                updateTextInput(session, "nomData", value = ddata)
+                output$datahot <<- renderRHandsontable({
+                  rhandsontable(ddata, width = 280, height = 500) %>%
+                    hot_cols(colWidths = 53) %>%
+                    hot_table(highlightCol = TRUE, highlightRow = TRUE)
+                })
+              }
+            } else {
+              return(NULL)
+            }
+        }
+      }
+      updateSelectInput(session, "listemercu", choices = c('Choisir MERCU' = '', outMERCU()))
+    } else {
+      return(NULL)
+    }
+  })
+  
+  observeEvent(input$listemercu, {
+    if (!is.null(input$listemercu)) {
+      # recherche l identifiant du sample
+      dt <- dtdata %>% filter(iidtn_dt == input$dt)
+      frt <- forestdata %>% filter(ccod_frt == input$forest)
+      agc <- agencedata %>% filter(iidtn_agc == input$agence)
+      prf <- parcelledata %>% filter(ccod_cact == input$agence, ccod_frt == input$forest, ccod_prf == input$parcelle)
+      query <- sprintf(
+        "SELECT id FROM sample WHERE dt=%s AND agence=%s AND forest=%s AND parcelle=%s",
+        dt$id, agc$id, frt$id, prf$id
+      )
+      sid <- loadData(query = query)
+      if (!is.null(sid)) {
+        # recherche l identifiant du datafile
+        query <- sprintf(
+          "SELECT id FROM filedata WHERE sample=%s AND name='%s'",
+          sid[[1]], input$listedata
+        )
+        did <- loadData(query = query)
+        if (!is.null(did)) {
+          # recherche l identifiant du filemercuriale selectionne
+          query <- sprintf(
+            "SELECT id FROM filemercuriale WHERE name='%s' AND filedata=%s",
+            input$listemercu, did[[1]]
+          )
+          fid <- loadData(query = query)
+          # recherche les data du filemercuriale si existe
+          if (!is.null(fid)) {
+            if (nrow(fid) > 0) {
+              query <- sprintf(
+                "SELECT cdiam, tarif, houppier, hauteur FROM datamercuriale WHERE filemercuriale=%s",
+                fid[[1]]
+              )
+              mercu <- loadData(query = query)
+              if (!is.null(input$listemercu)) {
+                updateTextInput(session, "nomMercu", value = as.character(input$listemercu))
+                output$mercuhot <<- renderRHandsontable({
+                  rhandsontable(mercu, width = 280, height = 500) %>%
+                    hot_cols(colWidths = 53) %>%
+                    hot_table(highlightCol = TRUE, highlightRow = TRUE)
+                })
+              }
+            } else {
+              return(NULL)
+            }
+          }
+        } else {
+          return(NULL)
+        }
+      }
+    }
   })
   
   observeEvent(input$dt, {
@@ -420,7 +604,7 @@ function(input, output, session) {
       filter(ccod_ut == input$pst)
     polypst
   })
-  
+
   observeEvent(input$pst, {
     pst <- polypst()
     if (!is.null(input$pst)) {
@@ -430,7 +614,7 @@ function(input, output, session) {
         setView(lat = st_coordinates(pst)[2], lng = st_coordinates(pst)[1], zoom = 10)
     }
   })
-  
+
   output$map0201 <- renderLeaflet({
     agc <- polyagc()
     popupagc <- paste0("<strong>", agc$iidtn_agc, " - ", agc$llib_agc, "</strong>")
@@ -453,16 +637,17 @@ function(input, output, session) {
     if (input$update02 == 0) return(NULL)
     if (is.null(pointclick$clickedMarker$lat)) return(NULL)
     p <- plotdata()
-    zonemap <- sf::st_transform(p$Zone, crs = 4326)
-    placettesmap <- sf::st_transform(p$Placettes, crs = 4326)
+    if (!is.null(p$Zone) | !is.null(p$Placettes)) {
+      zonemap <- sf::st_transform(p$Zone, crs = 4326)
+      placettesmap <- sf::st_transform(p$Placettes, crs = 4326)
+    } else {
+      return(NULL)
+    }
     popupzone <- paste0("<strong>", p$Zone$couche, " (id/nom) : </strong>", p$Zone$id, "/", p$Zone$name)
     popupplacettes <- paste0("<strong>Année : </strong>", p$Placettes$yrs, " - idp : ", p$Placettes$idp)
     leaflet() %>%
       setView(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, zoom = input$map0201_zoom - 3) %>%
       addTiles() %>%
-      # addDrawToolbar(
-      #   targetGroup='draw',
-      #   editOptions = editToolbarOptions(selectedPathOptions = selectedPathOptions())) %>%
       addPolygons(data = zonemap, weight = 2, fillColor = "yellow", popup = popupzone, group = "Zone de calcul") %>%
       addCircles(data = placettesmap, popup=popupplacettes, weight = 3, radius = 60, color = '#ff00e6', fill = TRUE, stroke = TRUE, fillOpacity = 0.1, group = "Placette IFN") %>%
       addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !") %>%
@@ -490,7 +675,6 @@ function(input, output, session) {
                                  pointclick$clickedMarker$lat, "),4326),2154), s.geom,0)")) %>%
         sf::st_transform(crs=2154)
       } else {
-        print(paste0(txtpst, " SELECT ", txt, "string_agg(name, ',') AS name, string_agg(id, ',') AS id, st_union(geom) AS geom FROM w2"))
         BDDQueryONF(query = paste0(txtpst, " SELECT ", txt, "string_agg(name, ',') AS name, string_agg(id, ',') AS id, st_union(geom) AS geom FROM w2")) %>%
           sf::st_transform(crs=2154)
       }
@@ -515,7 +699,7 @@ function(input, output, session) {
     if (is.null(filedata())) return(NULL)
     withProgress(message = 'Comparaison des résultats', style = 'notification', value = 0.5, {
       Sys.sleep(0.25)
-      resv <- gftools::describeBy(tabdata(), group = tabdata()$Essence)
+      resv <- gftools::describeBy(tabdata(), group = tabdata()$essence)
       incProgress(1)
     })
     Txt <- ""
@@ -536,8 +720,15 @@ function(input, output, session) {
     }
     return(Txt)
   })
+  
+  # tableau des donnees calculees
+  tabdata <- reactive({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    plotdata()$Tableau1
+  })
 
-  # Generate a summary of the result ----
+  # Generate a summary of the result
   output$summarycsv <- renderPrint({
     input$update02
     if (input$update02 == 0) return(NULL)
@@ -545,7 +736,7 @@ function(input, output, session) {
     if (is.null(filedata())) return(NULL)
     withProgress(message = 'Tableau des résultats', style = 'notification', value = 0.5, {
       Sys.sleep(0.25)
-      resv <- gftools::describeBy(tabdata(), group = tabdata()$Essence)
+      resv <- gftools::describeBy(tabdata(), group = tabdata()$essence)
       incProgress(1)
     })
     resv
@@ -574,6 +765,69 @@ function(input, output, session) {
     }
   )
   
+  # filedata --- fichier des donnees -----
+  observeEvent(input$saveBtnDataBDD, {
+    # enregistre ou met à jour sample
+    dt <- dtdata %>% filter(iidtn_dt == input$dt)
+    frt <- forestdata %>% filter(ccod_frt == input$forest)
+    agc <- agencedata %>% filter(iidtn_agc == input$agence)
+    prf <- parcelledata %>% filter(ccod_cact == input$agence, ccod_frt == input$forest, ccod_prf == input$parcelle)
+    query <- sprintf(
+      "INSERT INTO sample (create_date, create_uid, dt, agence, forest, parcelle) SELECT now(), 1, %s, %s, %s, %s 
+      WHERE NOT EXISTS (SELECT 1 FROM sample WHERE dt=%s AND agence=%s AND forest=%s AND parcelle=%s)",
+      dt$id, agc$id, frt$id, prf$id,
+      dt$id, agc$id, frt$id, prf$id
+    )
+    saveData(query = query)
+    # recherche l identifiant du sample
+    query <- sprintf(
+      "SELECT id FROM sample WHERE dt=%s AND agence=%s AND forest=%s AND parcelle=%s",
+      dt$id, agc$id, frt$id, prf$id
+    )
+    sid <- loadData(query = query)
+    # enregistre ou met a jour filedata
+    query <- sprintf(
+      "INSERT INTO filedata (create_date, create_uid, name, sample) SELECT now(), 1, '%s', %s
+      WHERE NOT EXISTS (SELECT 1 FROM filedata WHERE name='%s' AND sample=%s)",
+      input$nomData, sid[[1]],
+      input$nomData, sid[[1]]
+    )
+    saveData(query = query)
+    # recherche l identifiant du filedata juste cree
+    query <- sprintf(
+      "SELECT id FROM filedata WHERE name='%s' AND sample=%s",
+      input$nomData, sid[[1]]
+    )
+    fid <- loadData(query = query)
+    # enregistre ou met a jour les data
+    DF <- as.data.frame(filedata()) %>%
+      mutate(create_date = toString(as.POSIXlt(Sys.time(), "Europe/Paris")), create_uid = 1, filedata = fid[[1]])
+    # efface les data existantes
+    query <- sprintf(
+      "DELETE FROM datadata WHERE filedata=%s",
+      fid[[1]]
+    )
+    delData(query = query)
+    # insert les nouvelles data
+    insertData("datadata", DF)
+    # on met a jour la liste deroulante data csv
+    query <- sprintf(
+      "SELECT * FROM filedata WHERE sample=%s",
+      sid[[1]]
+    )
+    filed <<- loadData(query = query)
+    updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', filed$name))
+  })
+  
+  observe({
+    # enregistre la mercuriale
+    # apres chaque changement
+    if (!is.null(input$mercuhot)) {
+      readr::write_tsv(hot_to_r(input$mercuhot), mname)
+      print(paste("observe:", mname))
+    }
+  })
+  
   # save mercuriale
   output$saveBtnMercu <- downloadHandler(
     # Nom par défaut :
@@ -581,20 +835,283 @@ function(input, output, session) {
       paste0('Mercu_', Sys.Date(), '.csv')
     },
     content = function(file) {
-      write.csv(filemercu(), file, row.names = FALSE)
+      if (!is.null(input$mercuhot)) {
+        write.csv(as.data.frame(hot_to_r(input$mercuhot)), file, row.names = FALSE) 
+      } else {
+        write.csv(filemercu(), file, row.names = FALSE)
+      }
     }
   )
   
-  output$hot = renderRHandsontable({
-    if (!is.null(input$hot)) {
-      DF = hot_to_r(input$hot)
+  # filemercuriale --- fichier mecuriale -------
+  observeEvent(input$saveBtnMercuBDD, {
+    # recherche l identifiant du sample
+    dt <- dtdata %>% filter(iidtn_dt == input$dt)
+    frt <- forestdata %>% filter(ccod_frt == input$forest)
+    agc <- agencedata %>% filter(iidtn_agc == input$agence)
+    prf <- parcelledata %>% filter(ccod_cact == input$agence, ccod_frt == input$forest, ccod_prf == input$parcelle)
+    query <- sprintf(
+      "SELECT id FROM sample WHERE dt=%s AND agence=%s AND forest=%s AND parcelle=%s",
+      dt$id, agc$id, frt$id, prf$id
+    )
+    sid <- loadData(query = query)
+    # recherche l identifiant du datafile
+    query <- sprintf(
+      "SELECT id FROM filedata WHERE sample=%s AND name='%s'",
+      sid[[1]], input$listedata
+    )
+    did <- loadData(query = query)
+    # enregistre ou met a jour filemercuriale
+    query <- sprintf(
+      "INSERT INTO filemercuriale (create_date, create_uid, name, filedata) SELECT now(), 1, '%s', %s
+      WHERE NOT EXISTS (SELECT 1 FROM filemercuriale WHERE name='%s' AND filedata=%s)",
+      input$nomMercu, did[[1]],
+      input$nomMercu, did[[1]]
+    )
+    saveData(query = query)
+    # recherche l identifiant du filemercuriale juste cree
+    query <- sprintf(
+      "SELECT id FROM filemercuriale WHERE name='%s' AND filedata=%s",
+      input$nomMercu, did[[1]]
+    )
+    fid <- loadData(query = query)
+    # enregistre ou met a jour les data
+    if (!is.null(input$mercuhot)) {
+      DF <- hot_to_r(input$mercuhot)
     } else {
-      DF = filemercu()
+      DF <- mercu
     }
-    rhandsontable(DF) %>%
+    DF <- as.data.frame(DF) %>%
+      mutate(create_date = toString(as.POSIXlt(Sys.time(), "Europe/Paris")), create_uid = 1, filemercuriale = fid[[1]])
+    # efface les data existantes
+    query <- sprintf(
+      "DELETE FROM datamercuriale WHERE filemercuriale=%s",
+      fid[[1]]
+    )
+    delData(query = query)
+    # insert les nouvelles data
+    insertData("datamercuriale", DF)
+    # on met a jour la liste deroulante mercu csv
+    query <- sprintf(
+      "SELECT * FROM filemercuriale WHERE filedata=%s",
+      did[[1]]
+    )
+    filem <<- loadData(query = query)
+    updateSelectInput(session, "listemercu", choices = c('Choisir MERCU' = '', filem$name))
+  })
+  
+  # Samnbtig
+  Samnbtig <- reactive({
+    if (!is.null(input$datahot)) {
+      as.data.frame(hot_to_r(input$datahot))
+    } else if (!is.null(filedata())) {
+      filedata()
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Affichage Samnbtig
+  output$Samnbtig <- renderText({
+    if (is.null(Samnbtig())) return(NULL)
+    nbtig <- nrow(Samnbtig())
+    nbess <- unique(Samnbtig()$essence)
+    listess <- paste(nbess, collapse = ", ")
+    Txt <- paste0(
+      " L'échantillon contient ", nbtig, " tiges désignées et ", length(nbess), " essences : ", listess, "."
+    )
+  })
+  
+  # Tartypvol
+  Tartypvol <- reactive({
+    if (!is.null(input$mercuhot)) {
+      as.data.frame(hot_to_r(input$mercuhot))
+    } else if (!is.null(filemercu())) {
+      filemercu()
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Affichage Tartypvol
+  output$Tartypvol <- renderText({
+    if (is.null(Tartypvol())) return(NULL)
+    Tar <- unique(Tartypvol()$tarif)
+    Tar <- Tar[!is.na(Tar)]
+    Tab <- ListTarONF3[which(ListTarONF3$sibois %in% Tar), c("ess", "type_v", "contexte", "defvol", "dmin", "dmax", "hmin", "hmax", "entr1", "entr2", "sibois")]
+    Txt <- paste0(
+      Tab$sibois, " (", Tab$contexte, "), est un tarif pour les essences (", Tab$ess, "), pour les diamètres de ", Tab$dmin, " à ", Tab$dmax,
+      " cm, pour les hauteurs de ", Tab$hmin, " à ", Tab$hmax, " m,\n nécessite ", Tab$entr1, " et ", Tab$entr2, " et renvoi un ", Tab$defvol, " (", Tab$type_v, ").\n"
+    )
+  })
+  
+  # essences presentes dans l'echantillon
+  outESPAR = reactive({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    c('Toutes', pull(plotdata()$Tableau2, essence))
+  })
+  
+  # affichage des essences
+  observeEvent(input$update02, {
+    updateSelectInput(session, "espar", selected = 'Toutes', choices = c(Choisir='', outESPAR()))
+  })
+  
+  # tableau des mercuriales
+  outRESHOT = eventReactive(input$espar, {
+    if (!is.null(plotdata())) {
+      res1 <- plotdata()$Tableau1 %>%
+        group_by(Classe, essence) %>%
+        summarise_at(c("E_PHouppiers"), funs(mean)) %>%
+        mutate_at(c("E_PHouppiers"), funs(as.integer(100*round(., 2)))) 
+      res2 <- plotdata()$Tableau1 %>%
+        group_by(Classe) %>%
+        summarise_at(c("E_PHouppiers"), funs(mean)) %>%
+        mutate_at(c("E_PHouppiers"), funs(as.integer(100*round(., 2)))) %>%
+        mutate(essence='Toutes')
+      bind_rows(res1,res2) %>%
+        filter(essence == input$espar)
+    }
+  })
+  
+  # affichage du fichier des mercuriales
+  output$reshot = renderRHandsontable({
+    if (!is.null(outRESHOT())) {
+      DF = outRESHOT()
+    } else {
+      return(NULL)
+    }
+    rhandsontable(DF, width = 300, height = 500) %>%
+      hot_cols(rowHeaderWidth = 100) %>%
       hot_table(highlightCol = TRUE, highlightRow = TRUE)
   })
-
+  
+  # numtarif
+  observeEvent({
+    input$tarif
+    input$espar
+    }, {
+    if (!is.null(input$tarif) & !is.null(input$espar) & !(is.null(plotdata()$Tableau2))) {
+      res1 <- plotdata()$Tableau2
+      res2 <- res1 %>%
+         summarise_at(c("SchR","SchL","Alg"), funs(mean)) %>%
+         mutate(essence = 'Toutes')
+      res <- bind_rows(res2,res1)
+      arrondi <- if (is.numeric(res[[which(res$essence == input$espar), as.integer(input$tarif)]])) {round(res[[which(res$essence == input$espar), as.integer(input$tarif)]],0)} else ''
+      updateSelectInput(session, "numtarif", selected = arrondi)
+    }
+  })
+  
+  # bouton transmercu
+  observeEvent(input$transmercu, {
+    if (!is.null(input$reshot)) {
+      DF = hot_to_r(input$reshot) %>%
+        rename(cdiam = Classe) %>%
+        mutate(tarif = paste0(names(listetarif)[as.integer(input$tarif)], formatC(as.integer(input$numtarif), width=2, flag="0")), 
+               hauteur = 0,
+               houppier = round(100 * E_PHouppiers / (100 + E_PHouppiers), 0))
+    } else if (!is.null(outRESHOT())) {
+      DF = outRESHOT() %>%
+        rename(cdiam = Classe) %>%
+        mutate(tarif = paste0(names(listetarif)[as.integer(input$tarif)], formatC(as.integer(input$numtarif), width=2, flag="0")), 
+               hauteur = 0,
+               houppier = round(100 * E_PHouppiers / (100 + E_PHouppiers), 0))
+    } else {
+      return(NULL)
+    }
+    mercu <<- DF[, c("cdiam","tarif","houppier","hauteur")]
+    mhouppier <<- 'O'
+    output$mercuhot <<- renderRHandsontable({
+      rhandsontable(mercu, width = 280, height = 500) %>%
+        hot_cols(colWidths = 53) %>%
+        hot_table(highlightCol = TRUE, highlightRow = TRUE)
+    })
+    readr::write_tsv(mercu, mname)
+    print(paste("filemercu2:", mname))
+    mercu
+  })
+  
+  # tableau des donnees calculees
+  tablocalmercu <- reactive({
+    input$update022
+    if (input$update022 == 0) return(NULL)
+    query <- sprintf(
+      "SELECT DISTINCT exercice, agence, diam, haut, nb, tahd AS l_phouppiers, tacomd, volcu AS l_vbftigcom, volcu*(tahd/100.0) AS l_vhouppiers, 
+      volcu*(1+tahd/100.0) AS l_vbftot7cm FROM datacab WHERE agence='%s' AND exercice=%s AND diam>0 AND tacomd!='0'",
+      input$agence, input$exercice
+    )
+    res <- loadData(query = query)
+    if (!is.null(res)) {
+      if (nrow(res) > 0) {
+        mer <- readr::read_tsv(
+          mname,
+          locale = readr::locale(encoding = "UTF-8", decimal_mark = "."),
+          readr::cols(cdiam = readr::col_integer(), tarif = readr::col_character(), houppier = readr::col_integer(), hauteur = readr::col_double()),
+          col_names = T) %>%
+          filter(!is.na(tarif))
+        res <- res %>%
+          mutate(classe = floor(diam / 5 + 0.5) * 5) %>%
+          inner_join(mer, by = c(classe = "cdiam"))
+        res <- data.table(res)
+        res[, e_vbftot7cm := TarONF3(Tar = tarif, cdiam = diam, entr1 = diam, entr2 = haut, details = FALSE), by = tarif]
+        tab <- res %>%
+          mutate(
+            e_vhouppiers = e_vbftot7cm * houppier / 100,
+            e_vbftigcom = e_vbftot7cm - e_vhouppiers,
+            e_phouppiers = houppier / 100
+          )
+        tab.r <- tab %>%
+          mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
+          group_by(exercice,agence,classe) %>%
+          summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers"), sum, na.rm=TRUE)
+        tab1 <- tab.r
+        tab.r <- reshape2::melt(tab.r, id.vars = c("exercice","agence","classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
+          mutate(Type = substr(variable, 1, 2), variable = substr(variable, 4, 12))
+        names(tab.r) <- c("exercice","agence","classe", "tarif", "vol", "type")
+        tab.r$type[which(tab.r$type=='tl')] <- "LOCAL"
+        tab.r$type[which(tab.r$type=='te')] <- "EMERCU"
+        tab.r$tarif[which(tab.r$tarif=='vhouppier')] <- "VHouppiers"
+        tab.r$tarif[which(tab.r$tarif=='vbftigcom')] <- "VbftigCom"
+        out <- list(tab1, tab.r)
+        names(out) <- c("Tableau1", "Tableau2")
+        return(out)
+      }
+    }
+  })
+  
+  # Affichage du graphe de comparaison des volumes agences
+  output$plotdatacab <- renderPlot({
+    if (!is.null(tablocalmercu()$Tableau2)) {
+      ggplot(tablocalmercu()$Tableau2, aes(x = type, y = vol, group = type, fill=type, alpha = tarif)) +
+        scale_fill_manual(values = c("red", "darkgreen")) +
+        geom_bar(stat="identity", position = "stack") +
+        facet_grid(agence ~ classe) +
+        scale_alpha_manual(values=c(1,0.1))
+    }
+  })
+  
+  # localmercu
+  output$localmercu <- renderText({
+    input$update022
+    if (input$update022 == 0) return(NULL)
+    withProgress(message = 'Comparaison des résultats', style = 'notification', value = 0.5, {
+      Sys.sleep(0.25)
+      resv <- gftools::describeBy(tablocalmercu()$Tableau1, group = tablocalmercu()$Tableau1$type)
+      incProgress(1)
+    })
+    Txt <- paste0(
+        "Pour l'agence ", input$agence, ", pour l'exercice ", input$exercice,
+        ", l'estimation LOCAL cube ", round(100 * ((resv["tl_vbftigcom", "sum"] + resv["tl_vhouppiers", "sum"]) / (resv["te_vbftigcom", "sum"] + resv["te_vhouppiers", "sum"])- 1), 0),
+        "% du volume bois fort total decoupe 7cm EMERCU, ", round(100 * (resv["tl_vbftigcom", "sum"] / resv["te_vbftigcom", "sum"] - 1), 0),
+        "% du volume bois fort tige EMERCU et ", round(100 * (resv["tl_vhouppiers", "sum"] / resv["te_vhouppiers", "sum"] - 1), 0),
+        "% du volume houppiers EMERCU :\n- le volume bois fort tige commercial LOCAL est de ", round(resv["tl_vbftigcom", "sum"], 0),
+        " m3, le volume bois fort tige commercial EMERCU est de ", round(resv["te_vbftigcom", "sum"], 0),
+        " m3,\n- le volume houppier LOCAL est de ", round(resv["tl_vhouppiers", "sum"], 0),
+        " m3, le volume houppier EMERCU est de ", round(resv["te_vhouppiers", "sum"], 0), " m3.\n"
+    )
+    return(Txt)
+  })
+  
   ########## Onglet 03 ##############################################
   # This function is repsonsible for loading in the selected zip file
   filezipdata03 <- reactive({
