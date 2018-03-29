@@ -1,2 +1,2 @@
-# shinyproxy-gftools
+# shiny-gftools
 Shiny applications for gftools
