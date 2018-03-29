@@ -153,6 +153,9 @@ fluidPage(
             includeMarkdown("definition.md"),
             tableOutput("data_table")
           ),
+          tabPanel("Protocole",
+                   includeMarkdown("protocole.md")
+          ),
           tabPanel("Graphe",
             h1("Comparaison des volumes par application des tarifs (LOCAL/EMERGE/SchR/SchL/Algan)"),
             textOutput("text02"),
