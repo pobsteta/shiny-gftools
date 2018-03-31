@@ -22,7 +22,7 @@ library(rhandsontable)
 library(RPostgreSQL)
 
 options(pgsql = list(
-  "host" = "0.0.0.0",
+  "host" = "167.99.143.72",
   "port" = 35432,
   "user" = "tryton",
   "password" = "tryton"
