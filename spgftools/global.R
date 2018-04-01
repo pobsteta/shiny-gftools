@@ -19,6 +19,7 @@ library(data.table)
 library(leaflet.extras)
 library(gftools)
 library(rhandsontable)
+library(pool)
 library(RPostgreSQL)
 
 options(pgsql = list(
@@ -53,13 +54,13 @@ mhouppier <- 'N'
 BDDQueryONF <- function(query) {
   ## query posgresql database onf
   # set up connection
-  db <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  conn <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # dummy query (obviously), including a spatial subset and ST_Simplify to simplify geometry (optionel)
-  result <- st_read_db(db, query=query, geom="geom") %>%
+  result <- st_read_db(conn, query=query, geom="geom") %>%
     sf::st_transform(result, crs = 4326)
-  dbDisconnect(db)
+  dbDisconnect(conn)
   return(result)
 }
 
@@ -73,12 +74,12 @@ BDDQueryONF <- function(query) {
 #' @examples
 delData <- function(query) {
   # Connect to the database
-  db <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # Submit the update query and disconnect
-  dbGetQuery(db, query)
-  dbDisconnect(db)
+  dbGetQuery(pool, query)
+  poolClose(pool)
 }
 
 #' saveData
@@ -91,12 +92,12 @@ delData <- function(query) {
 #' @examples
 saveData <- function(query) {
   # Connect to the database
-  db <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # Submit the update query and disconnect
-  dbGetQuery(db, query)
-  dbDisconnect(db)
+  dbGetQuery(pool, query)
+  poolClose(pool)
 }
 
 
@@ -110,12 +111,12 @@ saveData <- function(query) {
 #' @examples
 loadData <- function(query) {
   # Connect to the database
-  db <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # Submit the fetch query and disconnect
-  data <- dbGetQuery(db, query)
-  dbDisconnect(db)
+  data <- dbGetQuery(pool, query)
+  poolClose(pool)
   return(data)
 }
 
@@ -131,12 +132,12 @@ loadData <- function(query) {
 #' @examples
 insertData <- function(table, df) {
   # Connect to the database
-  db <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # upsert the dataframe
-  dbWriteTable(db, table, df, append = TRUE, row.names = FALSE)
-  dbDisconnect(db)
+  dbWriteTable(pool, table, df, append = TRUE, row.names = FALSE)
+  poolClose(pool)
 }
 
 
@@ -151,5 +152,3 @@ files <- loadData("SELECT s.id AS id, d.iidtn_dt AS dt, a.iidtn_agc AS agence, f
                   WHERE s.dt=d.id AND s.agence=a.id AND s.forest=f.id AND s.parcelle=p.id")
 filed <- loadData("SELECT * FROM filedata")
 filem <- loadData("SELECT * FROM filemercuriale")
-
-
