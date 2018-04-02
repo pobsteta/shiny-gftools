@@ -26,9 +26,9 @@ options(pgsql = list(
   "host" = "0.0.0.0",
   "port" = 35432,
   "user" = "tryton",
-  "password" = "tryton"
+  "password" = "tryton",
+  "dbname" = "tryton"
 ))
-dbname <- "tryton"
 
 
 # fichiers temporaires
@@ -54,7 +54,7 @@ mhouppier <- 'N'
 BDDQueryONF <- function(query) {
   ## query posgresql database onf
   # set up connection
-  conn <- dbConnect("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  conn <- dbConnect("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # dummy query (obviously), including a spatial subset and ST_Simplify to simplify geometry (optionel)
@@ -74,7 +74,7 @@ BDDQueryONF <- function(query) {
 #' @examples
 delData <- function(query) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # Submit the update query and disconnect
@@ -92,7 +92,7 @@ delData <- function(query) {
 #' @examples
 saveData <- function(query) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # Submit the update query and disconnect
@@ -111,7 +111,7 @@ saveData <- function(query) {
 #' @examples
 loadData <- function(query) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # Submit the fetch query and disconnect
@@ -132,7 +132,7 @@ loadData <- function(query) {
 #' @examples
 insertData <- function(table, df) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = dbname, host = options()$pgsql$host, 
+  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
                   port = options()$pgsql$port, user = options()$pgsql$user, 
                   password = options()$pgsql$password)
   # upsert the dataframe
