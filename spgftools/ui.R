@@ -288,7 +288,10 @@ fluidPage(
                    ),
                    fluidRow(
                      column(12,
-                            fluidRow(column(6, conditionalPanel("input.agence", h2("Comparaison des résultats sur l'agence"))),
+                            fluidRow(column(6, 
+                                            conditionalPanel("input.agence", h2("Comparaison des résultats sur l'agence pour l'essence"))),
+                                     column(4,
+                                            conditionalPanel("input.agence", uiOutput("Essences03"))),
                             br(),
                             plotOutput("plotdatacab")
                             )

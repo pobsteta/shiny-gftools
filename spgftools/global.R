@@ -1,3 +1,7 @@
+# if (!require("pacman")) install.packages("pacman")
+# pacman::p_load(shiny,shinythemes,shinyjs,leaflet,ggvis,ggrepel,dplyr,RColorBrewer,raster,gstat,rgdal,Cairo,ggmap,ggplot2,DT,tools,data.table,leaflet.extras,pool,RPostgreSQL,devtools)
+# pacman::p_load_gh('pobsteta/gftools','hadley/tidyverse','tidyverse/ggplot2','tidyverse/dplyr','r-spatial/sf','jrowen/rhandsontable')
+
 library(shiny)
 library(shinythemes)
 library(shinyjs)
@@ -11,16 +15,15 @@ library(gstat)
 library(rgdal)
 library(Cairo)
 library(ggmap)
-library(gftools)
 library(ggplot2)
 library(DT)
 library(tools)
 library(data.table)
 library(leaflet.extras)
-library(gftools)
-library(rhandsontable)
 library(pool)
 library(RPostgreSQL)
+library(gftools)
+library(rhandsontable)
 
 options(pgsql = list(
   "host" = "0.0.0.0",
@@ -29,6 +32,18 @@ options(pgsql = list(
   "password" = "tryton",
   "dbname" = "tryton"
 ))
+
+pool <- dbPool(
+  drv = "PostgreSQL",
+  port = options()$pgsql$port,
+  dbname = options()$pgsql$dbname,
+  host = options()$pgsql$host,
+  user = options()$pgsql$user,
+  password = options()$pgsql$password
+)
+onStop(function() {
+  poolClose(pool)
+})
 
 
 # fichiers temporaires
@@ -74,12 +89,12 @@ BDDQueryONF <- function(query) {
 #' @examples
 delData <- function(query) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-                  port = options()$pgsql$port, user = options()$pgsql$user, 
-                  password = options()$pgsql$password)
+  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
+  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
+  #                 password = options()$pgsql$password)
   # Submit the update query and disconnect
   dbGetQuery(pool, query)
-  poolClose(pool)
+  # poolClose(pool)
 }
 
 #' saveData
@@ -92,12 +107,12 @@ delData <- function(query) {
 #' @examples
 saveData <- function(query) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-                  port = options()$pgsql$port, user = options()$pgsql$user, 
-                  password = options()$pgsql$password)
+  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
+  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
+  #                 password = options()$pgsql$password)
   # Submit the update query and disconnect
   dbGetQuery(pool, query)
-  poolClose(pool)
+  # poolClose(pool)
 }
 
 
@@ -111,12 +126,12 @@ saveData <- function(query) {
 #' @examples
 loadData <- function(query) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-                  port = options()$pgsql$port, user = options()$pgsql$user, 
-                  password = options()$pgsql$password)
+  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
+  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
+  #                 password = options()$pgsql$password)
   # Submit the fetch query and disconnect
   data <- dbGetQuery(pool, query)
-  poolClose(pool)
+  # poolClose(pool)
   return(data)
 }
 
@@ -132,12 +147,12 @@ loadData <- function(query) {
 #' @examples
 insertData <- function(table, df) {
   # Connect to the database
-  pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-                  port = options()$pgsql$port, user = options()$pgsql$user, 
-                  password = options()$pgsql$password)
+  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
+  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
+  #                 password = options()$pgsql$password)
   # upsert the dataframe
   dbWriteTable(pool, table, df, append = TRUE, row.names = FALSE)
-  poolClose(pool)
+  # poolClose(pool)
 }
 
 

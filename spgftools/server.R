@@ -1036,7 +1036,7 @@ function(input, output, session) {
     input$update022
     if (input$update022 == 0) return(NULL)
     query <- sprintf(
-      "SELECT DISTINCT exercice, agence, diam, haut, nb, tahd AS l_phouppiers, tacomd, volcu AS l_vbftigcom, volcu*(tahd/100.0) AS l_vhouppiers, 
+      "SELECT exercice, agence, ess AS essence, diam, haut, nb, tahd AS l_phouppiers, tacomd, volcu AS l_vbftigcom, volcu*(tahd/100.0) AS l_vhouppiers, 
       volcu*(1+tahd/100.0) AS l_vbftot7cm FROM datacab WHERE agence='%s' AND exercice=%s AND diam>0 AND tacomd!='0'",
       input$agence, input$exercice
     )
@@ -1062,17 +1062,23 @@ function(input, output, session) {
           )
         tab.r <- tab %>%
           mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
+          group_by(exercice,agence,essence,classe) %>%
+          summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm=TRUE)
+        tab.s <- tab %>%
+          mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
           group_by(exercice,agence,classe) %>%
-          summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers"), sum, na.rm=TRUE)
-        tab1 <- tab.r
-        tab.r <- reshape2::melt(tab.r, id.vars = c("exercice","agence","classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
+          summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm=TRUE) %>%
+          mutate(essence="Toutes")
+        tab1 <- bind_rows(tab.r, tab.s)
+        
+        tab.t <- reshape2::melt(tab1, id.vars = c("exercice","agence","essence","classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
           mutate(Type = substr(variable, 1, 2), variable = substr(variable, 4, 12))
-        names(tab.r) <- c("exercice","agence","classe", "tarif", "vol", "type")
-        tab.r$type[which(tab.r$type=='tl')] <- "LOCAL"
-        tab.r$type[which(tab.r$type=='te')] <- "EMERCU"
-        tab.r$tarif[which(tab.r$tarif=='vhouppier')] <- "VHouppiers"
-        tab.r$tarif[which(tab.r$tarif=='vbftigcom')] <- "VbftigCom"
-        out <- list(tab1, tab.r)
+        names(tab.t) <- c("exercice","agence","essence","classe","tarif","vol","type")
+        tab.t$type[which(tab.t$type=='tl')] <- "LOCAL"
+        tab.t$type[which(tab.t$type=='te')] <- "EMERCU"
+        tab.t$tarif[which(tab.t$tarif=='vhouppier')] <- "VHouppiers"
+        tab.t$tarif[which(tab.t$tarif=='vbftigcom')] <- "VbftigCom"
+        out <- list(tab1, tab.t)
         names(out) <- c("Tableau1", "Tableau2")
         return(out)
       }
@@ -1082,10 +1088,13 @@ function(input, output, session) {
   # Affichage du graphe de comparaison des volumes agences
   output$plotdatacab <- renderPlot({
     if (!is.null(tablocalmercu()$Tableau2)) {
-      ggplot(tablocalmercu()$Tableau2, aes(x = type, y = vol, group = type, fill=type, alpha = tarif)) +
+      if (is.null(input$Essences03)) return (NULL)
+      tab <- tablocalmercu()$Tableau2 %>%
+          filter(essence %in% input$Essences03)
+      ggplot(tab, aes(x = type, y = vol, group = type, fill=type, alpha = tarif)) +
         scale_fill_manual(values = c("red", "darkgreen")) +
         geom_bar(stat="identity", position = "stack") +
-        facet_grid(agence ~ classe) +
+        facet_grid(agence + essence ~ classe) +
         scale_alpha_manual(values=c(1,0.1))
     }
   })
@@ -1094,22 +1103,34 @@ function(input, output, session) {
   output$localmercu <- renderText({
     input$update022
     if (input$update022 == 0) return(NULL)
+    tab <- tablocalmercu()$Tableau1 %>%
+      filter(essence %in% input$Essences03)
     withProgress(message = 'Comparaison des résultats', style = 'notification', value = 0.5, {
       Sys.sleep(0.25)
-      resv <- gftools::describeBy(tablocalmercu()$Tableau1, group = tablocalmercu()$Tableau1$type)
+      resv <- gftools::describeBy(tab, group = tab$essence)
       incProgress(1)
     })
-    Txt <- paste0(
-        "Pour l'agence ", input$agence, ", pour l'exercice ", input$exercice,
-        ", l'estimation LOCAL cube ", round(100 * ((resv["tl_vbftigcom", "sum"] + resv["tl_vhouppiers", "sum"]) / (resv["te_vbftigcom", "sum"] + resv["te_vhouppiers", "sum"])- 1), 0),
-        "% du volume bois fort total decoupe 7cm EMERCU, ", round(100 * (resv["tl_vbftigcom", "sum"] / resv["te_vbftigcom", "sum"] - 1), 0),
-        "% du volume bois fort tige EMERCU et ", round(100 * (resv["tl_vhouppiers", "sum"] / resv["te_vhouppiers", "sum"] - 1), 0),
-        "% du volume houppiers EMERCU :\n- le volume bois fort tige commercial LOCAL est de ", round(resv["tl_vbftigcom", "sum"], 0),
-        " m3, le volume bois fort tige commercial EMERCU est de ", round(resv["te_vbftigcom", "sum"], 0),
-        " m3,\n- le volume houppier LOCAL est de ", round(resv["tl_vhouppiers", "sum"], 0),
-        " m3, le volume houppier EMERCU est de ", round(resv["te_vhouppiers", "sum"], 0), " m3.\n"
-    )
+    print(resv)
+    Txt <- paste0("- AGENCE ", input$agence, ", EXERCICE ", input$exercice , " -\n")
+    for (r in length(resv):1) {
+      Txt <- paste0(Txt, 
+        "Pour l'essence ", names(resv[r]), " :\n - l'estimation LOCAL cube ", round(100 * ((resv[[r]]["tl_vbftigcom", "sum"] + resv[[r]]["tl_vhouppiers", "sum"]) / (resv[[r]]["te_vbftigcom", "sum"] + resv[[r]]["te_vhouppiers", "sum"])- 1), 0),
+        "% du volume bois fort total decoupe 7cm EMERCU, ", round(100 * (resv[[r]]["tl_vbftigcom", "sum"] / resv[[r]]["te_vbftigcom", "sum"] - 1), 0),
+        "% du volume bois fort tige EMERCU et ", round(100 * (resv[[r]]["tl_vhouppiers", "sum"] / resv[[r]]["te_vhouppiers", "sum"] - 1), 0),
+        "% du volume houppiers EMERCU :\n- le volume bois fort tige commercial LOCAL est de ", round(resv[[r]]["tl_vbftigcom", "sum"], 0),
+        " m3, le volume bois fort tige commercial EMERCU est de ", round(resv[[r]]["te_vbftigcom", "sum"], 0),
+        " m3,\n- le volume houppier LOCAL est de ", round(resv[[r]]["tl_vhouppiers", "sum"], 0),
+        " m3, le volume houppier EMERCU est de ", round(resv[[r]]["te_vhouppiers", "sum"], 0), " m3.\n"
+      )
+    }
     return(Txt)
+  })
+  
+  output$Essences03 <- renderUI({
+    if (input$update022 == 0) return(NULL)
+    items <- unique(tablocalmercu()$Tableau1$essence)
+    names(items) <- items
+    selectInput("Essences03", " ", multiple = TRUE, items, selected = c("Toutes"))
   })
   
   ########## Onglet 03 ##############################################
