@@ -5,7 +5,7 @@ date: "29 mars 2018"
 output: html_document
 ---
 
-## Protocole pour le recueil de données dendrométriques dans les peuplements martelés pour déterminer le n° de barème de cubage de bois sur pied (Schaeffer rapide, Schaeffer lent, Algan) rendant le mieux compte du volume calculé avec le tarif Emerge [(Protocole)](./www/ProtocoleRecueilDonneesDendroCubageBSP_PO_20170124.pdf).
+## Protocole pour le recueil de données dendrométriques dans les peuplements martelés pour déterminer le n° de barème de cubage de bois sur pied (Schaeffer rapide, Schaeffer lent, Algan) rendant le mieux compte du volume calculé avec le tarif Emerge [(Protocole BFC)](./www/ProtocoleRecueilDonneesDendroCubageBSP_PO_20170124.pdf).
 
 ### Echantillon
 Une 30aine d’arbres d’une même essence, représentatifs du lot à cuber, ce qui implique :
@@ -32,7 +32,7 @@ De même, on prendra des mesures sur environ 1 arbre sur 6 dans la classe 65, so
 
 **ATTENTION** : vérifié en Vol Bois Fort Total; mais à vérifier en VolTige, et conséquemment en Vol houppier !
 
-**En peuplements résineux ou peuplements feuillus «homogènes» (type futaie): cf. protocole M. Aubry (AURA)**
+**En peuplements résineux ou peuplements feuillus «homogènes» (type futaie): cf. protocole M. Aubry (AURA)** [(Protocole AURA)](./www/Protocole Choix Tarif.pdf).
 
 Idéalement les arbres sont choisis au hasard selon un maillage statistique systématique sur l’ensemble de la zone à diagnostiquer: 2 ou 3 arbres martelés (selon nombre de placettes d’échantillonnage retenu) les plus proches du centre de chaque placette.
 
