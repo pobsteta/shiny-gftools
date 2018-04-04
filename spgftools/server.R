@@ -820,11 +820,15 @@ function(input, output, session) {
   })
   
   observe({
-    # enregistre la mercuriale
+    # enregistre la mercuriale et les data
     # apres chaque changement
     if (!is.null(input$mercuhot)) {
       readr::write_tsv(hot_to_r(input$mercuhot), mname)
-      print(paste("observe:", mname))
+      print(paste("observe m:", mname))
+    }
+    if (!is.null(input$datahot)) {
+      readr::write_tsv(hot_to_r(input$datahot), fname)
+      print(paste("observe f:", fname))
     }
   })
   
