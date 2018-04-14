@@ -91,14 +91,39 @@ function(input, output, session) {
   ########### Onglet 02 ##############################################
   
   observeEvent(input$datafile, {
+    filedata()
     updateTextInput(session, "nomData", value = substr(input$datafile$name,1,nchar(input$datafile$name)-4))
     updateTabsetPanel(session, "inTabset02", selected = "Graphe")
     })
 
   observeEvent(input$mercufile, {
+    filemercu()
     updateTextInput(session, "nomMercu", value = substr(input$mercufile$name,1,nchar(input$mercufile$name)-4))
     updateTabsetPanel(session, "inTabset02", selected = "Graphe")
   })
+  
+  observeEvent(input$clausefile, {
+    fileclause()
+    updateTabsetPanel(session, "inTabset02", selected = "Graphe")
+  })
+  
+  observe({
+    # enregistre la mercuriale, les clauses
+    # et les data apres chaque changement
+    if (!is.null(input$mercuhot)) {
+      readr::write_tsv(hot_to_r(input$mercuhot), mname)
+      print(paste("observe m:", mname))
+    }
+    if (!is.null(input$datahot)) {
+      readr::write_tsv(hot_to_r(input$datahot), fname)
+      print(paste("observe f:", fname))
+    }
+    if (!is.null(input$clausehot)) {
+      readr::write_tsv(hot_to_r(input$clausehot), cname)
+      print(paste("observe c:", cname))
+    }
+  })
+  
     
   # fichier des data
   filedata <- reactive({
@@ -107,7 +132,7 @@ function(input, output, session) {
     dataf <<- readr::read_tsv(
       datafile$datapath,
       locale = readr::locale(encoding = "UTF-8", decimal_mark = ","),
-      readr::cols(essence = readr::col_character(), diam = readr::col_integer(), htot = readr::col_double(), hdec = readr::col_double()),
+      readr::cols(code = readr::col_character(), diam = readr::col_integer(), htot = readr::col_double(), hdec = readr::col_double()),
       col_names = T)
     readr::write_tsv(dataf, fname)
     print(paste("filedata:", fname))
@@ -131,11 +156,57 @@ function(input, output, session) {
     readr::write_tsv(mercu, mname)
     print(paste("filemercu:", mname))
     output$mercuhot <<- renderRHandsontable({
-      rhandsontable(mercu, width = 280, height = 500) %>%
-        hot_cols(colWidths = 53) %>%
+      rhandsontable(mercu, width = 240, height = 500, rowHeaders = NULL) %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE)
     })
     mercu
+  })
+  
+  # fichier des clauses
+  fileclause <- reactive({
+    clausefile <- input$clausefile
+    if (is.null(clausefile)) {
+      clause <<- data.frame(ess = 'Defaut', dmin = 10, dmax = 200, dec = 7)
+      readr::write_tsv(clause, cname)
+      print(paste("fileclause:", cname))
+      output$clausehot <<- renderRHandsontable({
+        items <- listessence
+        dmin <- seq(from=10, by=5,length.out = 39)
+        dmax <- seq(from=10, by=5,length.out = 39)
+        rhandsontable(clause, rowHeaders = NULL, height = 300, width = 300) %>%
+          hot_cols(colWidths = 70) %>%
+          hot_col(col = "ess", type = "dropdown", source = items) %>%
+          hot_col(col = "dmin", type = "dropdown", source = dmin) %>%
+          hot_col(col = "dmax", type = "dropdown", source = dmax) %>%
+          hot_cell(1, "ess", readOnly = TRUE) %>%
+          hot_cell(1, "dmin", readOnly = TRUE) %>%
+          hot_cell(1, "dmax", readOnly = TRUE) %>%
+          hot_table(highlightCol = TRUE, highlightRow = TRUE)
+      })
+    } else {
+      clause <<- readr::read_tsv(
+        clausefile$datapath,
+        locale = readr::locale(encoding = "UTF-8", decimal_mark = ","),
+        readr::cols(ess = readr::col_character(), dmin = readr::col_integer(), dmax = readr::col_integer(), dec = readr::col_double()),
+        col_names = T)
+      readr::write_tsv(clause, cname)
+      print(paste("fileclause:", cname))
+      output$clausehot <<- renderRHandsontable({
+        items <- listessence
+        dmin <- seq(from=10, by=5,length.out = 39)
+        dmax <- seq(from=10, by=5,length.out = 39)
+        rhandsontable(clause, height = 300, width = 300, rowHeaders = NULL) %>%
+          hot_cols(colWidths = 70) %>%
+          hot_col(col = "ess", type = "dropdown", source = items) %>%
+          hot_col(col = "dmin", type = "dropdown", source = dmin) %>%
+          hot_col(col = "dmax", type = "dropdown", source = dmax) %>%
+          hot_cell(1, "ess", readOnly = TRUE) %>%
+          hot_cell(1, "dmin", readOnly = TRUE) %>%
+          hot_cell(1, "dmax", readOnly = TRUE) %>%
+          hot_table(highlightCol = TRUE, highlightRow = TRUE)
+      })
+    }
+    clause
   })
 
   output$Essences02 <- renderUI({
@@ -171,12 +242,11 @@ function(input, output, session) {
           {
             shinyjs::html(id = "text02", html = "Go ! ")
             p <- gftools::TarifFindSch(
-              fichier = fname, mercuriale = mname, enreg = F,
-              decemerge = input$Decemerge, classearbremin = input$ClasseInf[1],
+              fichier = fname, mercuriale = mname, clause = cname, enreg = F,
+              classearbremin = input$ClasseInf[1],
               mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
               essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
               latitude = input$latitude, longitude = input$longitude,
-              typvolemerge = input$Volcompare,
               zonecalc = zonecalcul(),
               houppier = mhouppier
             )
@@ -447,14 +517,14 @@ function(input, output, session) {
         if (!is.null(did)) {
             if (nrow(did) > 0) {
               query <- sprintf(
-                "SELECT essence, diam, htot, hdec FROM datadata WHERE filedata=%s",
+                "SELECT code, diam, htot, hdec FROM datadata WHERE filedata=%s",
                 did[[1]]
               )
               ddata <- loadData(query = query)
               if (!is.null(ddata)) {
                 updateTextInput(session, "nomData", value = ddata)
                 output$datahot <<- renderRHandsontable({
-                  rhandsontable(ddata, width = 280, height = 500) %>%
+                  rhandsontable(ddata, readOnly = TRUE, width = 280, height = 500) %>%
                     hot_cols(colWidths = 53) %>%
                     hot_table(highlightCol = TRUE, highlightRow = TRUE)
                 })
@@ -507,8 +577,7 @@ function(input, output, session) {
               if (!is.null(input$listemercu)) {
                 updateTextInput(session, "nomMercu", value = as.character(input$listemercu))
                 output$mercuhot <<- renderRHandsontable({
-                  rhandsontable(mercu, width = 280, height = 500) %>%
-                    hot_cols(colWidths = 53) %>%
+                  rhandsontable(mercu, width = 240, height = 500, rowHeaders = NULL) %>%
                     hot_table(highlightCol = TRUE, highlightRow = TRUE)
                 })
               }
@@ -614,6 +683,17 @@ function(input, output, session) {
         setView(lat = st_coordinates(pst)[2], lng = st_coordinates(pst)[1], zoom = 10)
     }
   })
+  
+  observeEvent(input$map0201_click, {
+    pointclick$clickedMarker <- input$map0201_click
+    leafletProxy("map0201") %>%
+      clearMarkers() %>%
+      addMarkers(
+        lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng,
+        popup = paste0("lat=", pointclick$clickedMarker$lat, ", lng=", pointclick$clickedMarker$lng)
+      ) %>%
+      setView(lng = pointclick$clickedMarker$lng, lat = pointclick$clickedMarker$lat, input$map0201_zoom)
+  })
 
   output$map0201 <- renderLeaflet({
     agc <- polyagc()
@@ -622,7 +702,7 @@ function(input, output, session) {
     popupfrt <- paste0("<strong>", frt$llib2_frt, "</strong>")
     prf <- polyprf()
     popupprf <- paste0("<strong>Parcelle : </strong>", prf$ccod_prf)
-    leaflet() %>%
+    leaflet(options = leafletOptions(doubleClickZoom= FALSE)) %>%
       setView(lat = 47.08, lng = 5.68, zoom = 6) %>%
       addTiles() %>%
       addPolygons(data = polyfrt(), weight = 2, color = 'green', fillColor = 'green', popup = popupfrt, group = "Forêt") %>%
@@ -678,17 +758,6 @@ function(input, output, session) {
         BDDQueryONF(query = paste0(txtpst, " SELECT ", txt, "string_agg(name, ',') AS name, string_agg(id, ',') AS id, st_union(geom) AS geom FROM w2")) %>%
           sf::st_transform(crs=2154)
       }
-  })
-
-  observeEvent(input$map0201_click, {
-    pointclick$clickedMarker <- input$map0201_click
-    leafletProxy("map0201") %>%
-      clearMarkers() %>%
-      addMarkers(
-        lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng,
-        popup = paste0("lat=", pointclick$clickedMarker$lat, ", lng=", pointclick$clickedMarker$lng)
-      ) %>%
-      setView(lng = pointclick$clickedMarker$lng, lat = pointclick$clickedMarker$lat, input$map0201_zoom)
   })
   
   # Resvol
@@ -819,19 +888,6 @@ function(input, output, session) {
     updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', filed$name))
   })
   
-  observe({
-    # enregistre la mercuriale et les data
-    # apres chaque changement
-    if (!is.null(input$mercuhot)) {
-      readr::write_tsv(hot_to_r(input$mercuhot), mname)
-      print(paste("observe m:", mname))
-    }
-    if (!is.null(input$datahot)) {
-      readr::write_tsv(hot_to_r(input$datahot), fname)
-      print(paste("observe f:", fname))
-    }
-  })
-  
   # save mercuriale
   output$saveBtnMercu <- downloadHandler(
     # Nom par défaut :
@@ -904,6 +960,26 @@ function(input, output, session) {
     updateSelectInput(session, "listemercu", choices = c('Choisir MERCU' = '', filem$name))
   })
   
+  # Clauseter
+  Clauseter <- reactive({
+    if (!is.null(input$clausehot)) {
+      as.data.frame(hot_to_r(input$clausehot))
+    } else if (!is.null(fileclause())) {
+      fileclause()
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # Affichage Clauseter
+  output$Clauseter <- renderText({
+    if (is.null(Clauseter())) return(NULL)
+    Ess <- Clauseter()$ess
+    Txt <- paste0(
+      "Pour l'essence ", Clauseter()$ess, ", de la classe ", Clauseter()$dmin, " à la classe ", Clauseter()$dmax, ", la découpe fin bout est de ", Clauseter()$dec, " cm.\n"
+    )
+  })
+  
   # Samnbtig
   Samnbtig <- reactive({
     if (!is.null(input$datahot)) {
@@ -919,7 +995,7 @@ function(input, output, session) {
   output$Samnbtig <- renderText({
     if (is.null(Samnbtig())) return(NULL)
     nbtig <- nrow(Samnbtig())
-    nbess <- unique(Samnbtig()$essence)
+    nbess <- unique(Samnbtig()$code)
     listess <- paste(nbess, collapse = ", ")
     Txt <- paste0(
       " L'échantillon contient ", nbtig, " tiges désignées et ", length(nbess), " essences : ", listess, "."
@@ -985,8 +1061,7 @@ function(input, output, session) {
     } else {
       return(NULL)
     }
-    rhandsontable(DF, width = 300, height = 500) %>%
-      hot_cols(rowHeaderWidth = 100) %>%
+    rhandsontable(DF, width = 240, height = 500, rowHeaders = NULL) %>%
       hot_table(highlightCol = TRUE, highlightRow = TRUE)
   })
   
@@ -1026,12 +1101,11 @@ function(input, output, session) {
     mercu <<- DF[, c("cdiam","tarif","houppier","hauteur")]
     mhouppier <<- 'O'
     output$mercuhot <<- renderRHandsontable({
-      rhandsontable(mercu, width = 280, height = 500) %>%
-        hot_cols(colWidths = 53) %>%
+      rhandsontable(mercu, width = 240, height = 500, rowHeaders = NULL) %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE)
     })
-    readr::write_tsv(mercu, mname)
-    print(paste("filemercu2:", mname))
+    # readr::write_tsv(mercu, mname)
+    # print(paste("filemercu2:", mname))
     mercu
   })
   
@@ -1057,7 +1131,7 @@ function(input, output, session) {
           mutate(classe = floor(diam / 5 + 0.5) * 5) %>%
           inner_join(mer, by = c(classe = "cdiam"))
         res <- data.table(res)
-        res[, e_vbftot7cm := TarONF3(Tar = tarif, cdiam = diam, entr1 = diam, entr2 = haut, details = FALSE), by = tarif]
+        res[, e_vbftot7cm := TarONF3(Tar = tarif, entr1 = diam, entr2 = haut, details = FALSE), by = tarif]
         tab <- res %>%
           mutate(
             e_vhouppiers = e_vbftot7cm * houppier / 100,

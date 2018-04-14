@@ -26,7 +26,7 @@ library(gftools)
 library(rhandsontable)
 
 options(pgsql = list(
-  "host" = "167.99.143.72",
+  "host" = "0.0.0.0",
   "port" = 35432,
   "user" = "tryton",
   "password" = "tryton",
@@ -49,9 +49,11 @@ onStop(function() {
 # fichiers temporaires
 mname = tempfile(fileext = ".csv")
 fname = tempfile(fileext = ".csv")
+cname = tempfile(fileext = ".csv")
 
 # liste des tarifs
 listetarif <- setNames(1:3, c("SR","SL","AL"))
+listessence <- c("Defaut", "Chene", "Hetre", "Autres feuillus", "Epicea", "Sapin", "Pin", "Autres resineux")
 
 # houppier compris
 mhouppier <- 'N'
@@ -88,13 +90,7 @@ BDDQueryONF <- function(query) {
 #'
 #' @examples
 delData <- function(query) {
-  # Connect to the database
-  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
-  #                 password = options()$pgsql$password)
-  # Submit the update query and disconnect
   dbGetQuery(pool, query)
-  # poolClose(pool)
 }
 
 #' saveData
@@ -106,13 +102,7 @@ delData <- function(query) {
 #'
 #' @examples
 saveData <- function(query) {
-  # Connect to the database
-  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
-  #                 password = options()$pgsql$password)
-  # Submit the update query and disconnect
   dbGetQuery(pool, query)
-  # poolClose(pool)
 }
 
 
@@ -125,13 +115,7 @@ saveData <- function(query) {
 #'
 #' @examples
 loadData <- function(query) {
-  # Connect to the database
-  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
-  #                 password = options()$pgsql$password)
-  # Submit the fetch query and disconnect
   data <- dbGetQuery(pool, query)
-  # poolClose(pool)
   return(data)
 }
 
@@ -146,13 +130,7 @@ loadData <- function(query) {
 #'
 #' @examples
 insertData <- function(table, df) {
-  # Connect to the database
-  # pool <- dbPool("PostgreSQL", dbname = options()$pgsql$dbname, host = options()$pgsql$host, 
-  #                 port = options()$pgsql$port, user = options()$pgsql$user, 
-  #                 password = options()$pgsql$password)
-  # upsert the dataframe
   dbWriteTable(pool, table, df, append = TRUE, row.names = FALSE)
-  # poolClose(pool)
 }
 
 

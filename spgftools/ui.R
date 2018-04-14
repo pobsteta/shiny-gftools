@@ -27,7 +27,7 @@ fluidPage(
         tabsetPanel(
           tabPanel(
             "Plot",
-            h1("Carte des volumes en m3/ha des essences sur les points IFN"),
+            h2("Carte des volumes en m3/ha des essences sur les points IFN"),
             textOutput("text00"),
             fluidRow(
               plotOutput("plotcsv0", height = 700)
@@ -100,6 +100,7 @@ fluidPage(
       shinyjs::useShinyjs(),
       sidebarPanel(width = 2,
         conditionalPanel(condition='input.inTabset02 != "Resultat"',
+                         helpText("Comparaison du volume bois fort Total (découpe 7cm)"),
                          conditionalPanel("!input.hot", fileInput(
                            "datafile",
                            "Choisir Data CSV",
@@ -114,17 +115,11 @@ fluidPage(
                          )),
                          conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", selectInput("listemercu", "Choisir Mercu CSV", c('Choisir MERCU'=''))
                          ),
-                         selectInput(
-                           "Volcompare", "Volume à comparer:",
-                           choices = list("Volume bois fort Total (7cm)" = "total", "Volume bois fort Tige (? cm)" = "tige"),
-                           selected = "total"
+                         fileInput(
+                           "clausefile",
+                           "Choisir CCT CSV",
+                           accept = c(".csv")
                          ),
-                         sliderInput(
-                           "Decemerge", "Decoupe tige EMERGE (dec):",
-                           min = 0, max = 80,
-                           value = 7
-                         ),
-                         helpText("Note: diamètre à la découpe tige."),
                          sliderInput(
                            "ClasseInf", "Classe Diam Arbre:",
                            min = 10, max = 120,
@@ -137,10 +132,10 @@ fluidPage(
                          actionButton("update02", "Update", icon("refresh"), class = "btn btn-primary"),
                          checkboxInput("mappoint", " Utiliser data IFN", FALSE),
                          conditionalPanel("input.mappoint", uiOutput("Essences02")),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale"', sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale" || input.inTabset02 == "Map"', selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt))),
-                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale" || input.inTabset02 == "Map") && input.dt', selectInput("agence", "Agence :", c(Choisir=''))),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale" && input.agence', actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary"))
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause"', sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)),
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map"', selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt))),
+                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map") && input.dt', selectInput("agence", "Agence :", c(Choisir=''))),
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" && input.agence', actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary"))
         ),
         conditionalPanel(condition='input.inTabset02 == "Resultat"',
                          uiOutput("show_vars")
@@ -157,10 +152,11 @@ fluidPage(
                    includeMarkdown("protocole.md")
           ),
           tabPanel("Graphe",
-            h1("Comparaison des volumes par application des tarifs (LOCAL/EMERGE/SchR/SchL/Algan)"),
+            h2("Comparaison des volumes par application des tarifs (LOCAL/EMERGE/SchR/SchL/Algan)"),
             textOutput("text02"),
             verbatimTextOutput("Samnbtig"),
             verbatimTextOutput("Tartypvol"),
+            verbatimTextOutput("Clauseter"),
             fluidRow(
               column(
                 width = 4,
@@ -240,7 +236,7 @@ fluidPage(
                             )
                      )),
                    DT::dataTableOutput("tablecsv1")),
-          tabPanel("Data/Mercuriale",
+          tabPanel("Data/Mercuriale/Clause",
                    fluidRow(
                      column(12,
                             fluidRow(column(6,
@@ -280,7 +276,9 @@ fluidPage(
                             ),
                             conditionalPanel("input.tarif", actionButton(
                               "transmercu", "<<< Transférer la mercuriale EMERGE <<<",
-                              class = "btn btn-primary"))
+                              class = "btn btn-primary")),
+                            h5("Cahier des clauses territoriales :"),
+                            rHandsontableOutput("clausehot")
                      ),
                      column(5,
                             rHandsontableOutput("reshot")
@@ -305,7 +303,7 @@ fluidPage(
                    )
           ),
           tabPanel("Map",
-            h1("Cliquez sur la carte pour centrer la position des calculs"),
+            h2("Cliquez sur la carte pour centrer la position des calculs"),
             fluidRow(
               column(
                 width = 4,
@@ -431,7 +429,7 @@ fluidPage(
           type = "tabs",
           tabPanel(
             "Table",
-            h1("Recherche des tarifs (Krigeage à partir des volumes IFN)"),
+            h2("Recherche des tarifs (Krigeage à partir des volumes IFN)"),
             DT::dataTableOutput("table03"),
             textOutput("text03")
           )
