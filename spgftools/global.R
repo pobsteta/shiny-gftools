@@ -1,5 +1,5 @@
 # if (!require("pacman")) install.packages("pacman")
-# pacman::p_load(shiny,shinythemes,shinyjs,leaflet,ggvis,ggrepel,dplyr,RColorBrewer,raster,gstat,rgdal,Cairo,ggmap,ggplot2,DT,tools,data.table,leaflet.extras,pool,RPostgreSQL,devtools)
+# pacman::p_load(shiny,shinythemes,shinyjs,leaflet,ggvis,ggrepel,dplyr,RColorBrewer,raster,gstat,rgdal,Cairo,ggmap,ggplot2,DT,tools,leaflet.extras,pool,RPostgreSQL,devtools)
 # pacman::p_load_gh('pobsteta/gftools','hadley/tidyverse','tidyverse/ggplot2','tidyverse/dplyr','r-spatial/sf','jrowen/rhandsontable')
 
 library(shiny)
@@ -18,7 +18,6 @@ library(ggmap)
 library(ggplot2)
 library(DT)
 library(tools)
-library(data.table)
 library(leaflet.extras)
 library(pool)
 library(RPostgreSQL)
@@ -57,6 +56,9 @@ listessence <- c("Defaut", "Chene", "Hetre", "Autres feuillus", "Epicea", "Sapin
 
 # houppier compris
 mhouppier <- 'N'
+
+# Vectorize TarONF3
+TarifONF3v <- Vectorize(gftools::TarONF3)
 
 
 #' BDDQueryONF

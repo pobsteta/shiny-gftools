@@ -775,7 +775,7 @@ function(input, output, session) {
     for (r in length(resv):1) {
       Txt <- paste0(
         "Pour l'essence ", names(resv[r]), ", l'estimation ONF cube ", round(100 * (resv[[r]]["L_VbftigCom", "sum"] / resv[[r]]["E_VbftigCom", "sum"] - 1), 0),
-        "% du volume bois fort tige commercial EMERGE et ", round(100 * (resv[[r]]["L_Vbftot7cm", "sum"] / resv[[r]]["E_Vbftot7cm", "sum"] - 1), 0), 
+        "% du volume bois fort tige commercial EMERGE et ", round(100 * (resv[[r]]["L_Vbftot7cm", "sum"] / resv[[r]]["E_Vbftot7cm", "sum"] - 1), 0),
         "% du volume bois fort total EMERGE :\n- le volume bois fort tige commercial (L_VbftigCom) LOCAL de l'échantillon est de ", resv[[r]]["L_VbftigCom", "sum"],
         " m3, le volume bois fort tige commercial (E_VbftigCom) EMERGE de l'échantillon est de ", resv[[r]]["E_VbftigCom", "sum"],
         " m3,\n- le volume houppier (L_VHouppiers) LOCAL de l'échantillon est de ", resv[[r]]["L_VHouppiers", "sum"],
@@ -1061,7 +1061,7 @@ function(input, output, session) {
     } else {
       return(NULL)
     }
-    rhandsontable(DF, width = 240, height = 500, rowHeaders = NULL) %>%
+    rhandsontable(DF, width = 280, height = 500, rowHeaders = NULL) %>%
       hot_table(highlightCol = TRUE, highlightRow = TRUE)
   })
   
@@ -1104,8 +1104,6 @@ function(input, output, session) {
       rhandsontable(mercu, width = 240, height = 500, rowHeaders = NULL) %>%
         hot_table(highlightCol = TRUE, highlightRow = TRUE)
     })
-    # readr::write_tsv(mercu, mname)
-    # print(paste("filemercu2:", mname))
     mercu
   })
   
@@ -1130,10 +1128,9 @@ function(input, output, session) {
         res <- res %>%
           mutate(classe = floor(diam / 5 + 0.5) * 5) %>%
           inner_join(mer, by = c(classe = "cdiam"))
-        res <- data.table(res)
-        res[, e_vbftot7cm := TarONF3(Tar = tarif, entr1 = diam, entr2 = haut, details = FALSE), by = tarif]
         tab <- res %>%
           mutate(
+            e_vbftot7cm = as.numeric(TarifONF3v(tarif = tarif, entr1 = diam, entr2 = haut, details = FALSE)),
             e_vhouppiers = e_vbftot7cm * houppier / 100,
             e_vbftigcom = e_vbftot7cm - e_vhouppiers,
             e_phouppiers = houppier / 100
