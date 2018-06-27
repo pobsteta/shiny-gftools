@@ -106,19 +106,24 @@ fluidPage(
                            "Choisir Data CSV",
                            accept = c(".csv")
                          )),
-                         conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", selectInput("listedata", "Choisir Data CSV", c('Choisir DATA'=''))
+                         conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", 
+                                          selectInput("listedata", "Choisir Data BDD", c('Choisir DATA'=''))
                          ),
                          conditionalPanel("!input.hot", fileInput(
                            "mercufile",
                            "Choisir Mercu CSV",
                            accept = c(".csv")
                          )),
-                         conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", selectInput("listemercu", "Choisir Mercu CSV", c('Choisir MERCU'=''))
+                         conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", 
+                                          selectInput("listemercu", "Choisir Mercu BDD", c('Choisir MERCU'=''))
                          ),
                          fileInput(
                            "clausefile",
                            "Choisir CCT CSV",
                            accept = c(".csv")
+                         ),
+                         conditionalPanel("input.agence && input.dt", 
+                                          selectInput("listeclause", "Choisir Clause BDD", c('Choisir Clause'=''))
                          ),
                          sliderInput(
                            "ClasseInf", "Classe Diam Arbre:",
@@ -288,9 +293,16 @@ fluidPage(
                      column(12,
                             fluidRow(column(6, 
                                             conditionalPanel("input.agence", h2("Comparaison des résultats sur l'agence pour l'essence"))),
+                                     br(),
+                                     column(3,
+                                            conditionalPanel("input.agence && input.mappoint",downloadButton(
+                                              "reportagence", "Rapport Agence",
+                                              class = "btn btn-primary"
+                                            ))),
                                      column(4,
                                             conditionalPanel("input.agence", uiOutput("Essences03"))),
                             br(),
+                            column(12, textOutput("text04")),
                             plotOutput("plotdatacab")
                             )
                      ),

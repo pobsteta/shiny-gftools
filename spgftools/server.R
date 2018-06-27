@@ -242,11 +242,16 @@ function(input, output, session) {
           {
             shinyjs::html(id = "text02", html = "Go ! ")
             p <- gftools::TarifFindSch(
-              fichier = fname, mercuriale = mname, clause = cname, enreg = F,
+              fichier = fname, 
+              mercuriale = mname,
+              clause = cname, 
+              enreg = F,
               classearbremin = input$ClasseInf[1],
-              mappoint = input$mappoint, classearbremax = input$ClasseInf[2],
+              mappoint = input$mappoint, 
+              classearbremax = input$ClasseInf[2],
               essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
-              latitude = input$latitude, longitude = input$longitude,
+              latitude = input$latitude, 
+              longitude = input$longitude,
               zonecalc = zonecalcul(),
               houppier = mhouppier
             )
@@ -490,8 +495,29 @@ function(input, output, session) {
     }
   })
   
-  observeEvent(input$parcelle, {
-    updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', outDATA()))
+  outCCT = reactive({
+    cfile <- agencedata %>%
+      filter(grepl(input$agence, iidtn_agc))
+    print(paste0("cfile: ", cfile$id))
+    if (length(cfile$id) > 0) {
+      cct <- filec %>%
+        filter(agence %in% cfile$id)
+      if (length(cct$id) > 0) {
+        return(cct$name)
+      } else {
+        return(NULL)
+      }
+    } else {
+      return(NULL)
+    }
+  })
+  
+  # observeEvent(input$parcelle, {
+  #   updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', outDATA()))
+  # })
+  
+  observeEvent(input$agence, {
+    updateSelectInput(session, "listeclause", choices = c('Choisir CCT' = '', outCCT()))
   })
   
   observeEvent(input$listedata, {
@@ -592,6 +618,116 @@ function(input, output, session) {
     }
   })
   
+  observeEvent(input$listeclause, {
+    if (!is.null(input$listeclause)) {
+      # recherche l identifiant de la liste
+      dt <- dtdata %>% filter(iidtn_dt == input$dt)
+      agc <- agencedata %>% filter(iidtn_agc == input$agence)
+      query <- sprintf(
+        "SELECT id FROM cahierclausedt WHERE dt=%s AND agence=%s",
+        dt$id, agc$id
+      )
+      cid <- loadData(query = query)
+      if (!is.null(cid)) {
+        # recherche les data du cahierclausedt si existe
+          if (nrow(cid) > 0) {
+            query <- sprintf(
+              "SELECT essence as ess, dmin, dmax, decoupe AS dec FROM itemcahierclausedt WHERE cahierclausedt=%s",
+              cid
+            )
+            cct <- loadData(query = query)
+            if (!is.null(cct)) {
+              readr::write_tsv(cct, cname)
+              print(paste("fileclause:", cname))
+              output$clausehot <<- renderRHandsontable({
+                items <- listessence
+                dmin <- seq(from=10, by=5,length.out = 39)
+                dmax <- seq(from=10, by=5,length.out = 39)
+                rhandsontable(cct, rowHeaders = NULL, height = 300, width = 300) %>%
+                  hot_cols(colWidths = 70) %>%
+                  hot_col(col = "ess", type = "dropdown", source = items) %>%
+                  hot_col(col = "dmin", type = "dropdown", source = dmin) %>%
+                  hot_col(col = "dmax", type = "dropdown", source = dmax) %>%
+                  hot_cell(1, "ess", readOnly = TRUE) %>%
+                  hot_cell(1, "dmin", readOnly = TRUE) %>%
+                  hot_cell(1, "dmax", readOnly = TRUE) %>%
+                  hot_table(highlightCol = TRUE, highlightRow = TRUE)
+              })
+            }
+          } else {
+            return(NULL)
+          }
+        }
+      } else {
+        return(NULL)
+      }
+  })
+  
+  ## Nom du rapport
+  outNameReport = reactive({
+    filename <- paste0("rapport_agence_", input$agence,"_au_", format(Sys.Date(),"%Y%m%d") , ".pdf")
+    return(filename)
+  })
+  
+  ## Rapport agence
+  output$reportagence <- downloadHandler(
+    filename = outNameReport(),
+    content = function(file) {
+      # creer le rapport dans un repertoire temporaire avant de le télécharger
+      tempReport <- file.path(tempdir(), "report.Rmd")
+      file.copy("report.Rmd", tempReport, overwrite = TRUE)
+      
+      CodesEssIFN <- gftools::getData("IFNCODE") %>%
+        dplyr::filter(donnee %in% "ESPAR")
+      
+      # on recherche les SER intersectant l agence
+      shapefileDF <- BDDQueryONF(query = paste0("SELECT a.iidtn_agc AS agence, s.code, s.name AS ser, s.geom FROM ser s, agence a WHERE st_dwithin(a.geom,s.geom,0) AND a.iidtn_agc='", input$agence, "'"))
+      # on recherche les UTs de l agence
+      poste <- BDDQueryONF(query = paste0("SELECT ccod_cact, ccod_ut, clib_pst, geom FROM pst WHERE ccod_ut LIKE '", input$agence, "%' ORDER BY ccod_ut"))
+      # instancie la barre de proression
+      maxi <- length(unique(shapefileDF["code"]$code)) * length(CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)]) + 5
+      progress <- Progress$new(session, min=1, max=maxi)
+      on.exit(progress$close())
+      progress$set(message = 'Création du rapport agence',
+                   detail = 'Ça prend du temps...', value = 1)
+      
+      # knit le document en passant les parametres params
+      isolate({
+          withCallingHandlers(
+            {
+              shinyjs::html(id = "text04", html = "Go ! Soyez très patient...")
+              # on calclule le besttarif
+              resu <- BestTarifFindSch(zonecalc = shapefileDF, 
+                                       clause = cname, 
+                                       agence = input$agence,
+                                       exercice = input$exercice, 
+                                       classearbremin = input$ClasseInf[1],
+                                       classearbremax = input$ClasseInf[2],
+                                       essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
+                                       barre = progress)
+              # on prend les parametres en compte pour le rapport markdown
+              params = list(agence = input$agence,
+                            exercice = input$exercice,
+                            clause = cname,
+                            classearbremin = input$ClasseInf[1],
+                            classearbremax = input$ClasseInf[2],
+                            essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
+                            shape = shapefileDF,
+                            pst = poste,
+                            barre = progress,
+                            res = resu)
+              progress$set(value = maxi - 3)
+              rmarkdown::render(tempReport, output_file = file, params = params, envir = new.env(parent = globalenv()))
+              progress$set(value = maxi - 2)
+            },
+            message = function(m) {
+              shinyjs::html(id = "text04", html = m$message, add = TRUE)
+            }
+          )
+      })
+    }
+  )
+  
   observeEvent(input$dt, {
     updateSelectInput(session, "agence", choices = c(Choisir='', outAGC()))
   })
@@ -612,8 +748,10 @@ function(input, output, session) {
   
   observeEvent(input$dt, {
     dt <- polydt()
-    if (!is.null(input$dt)) {
-      dt <- st_centroid(dt) %>%
+    if (!is.null(input$dt) && !is.na(st_bbox(dt)$xmin)) {
+      dt <- st_transform(dt, 2154) %>%
+        st_centroid() %>%
+        st_transform(4326) %>%
         st_geometry()
       leafletProxy('map0201') %>%
         setView(lat = st_coordinates(dt)[2], lng = st_coordinates(dt)[1], zoom = 8)
@@ -628,8 +766,10 @@ function(input, output, session) {
   
   observeEvent(input$agence, {
     agc <- polyagc()
-    if (!is.null(input$agence)) {
-      agc <- st_centroid(agc) %>%
+    if (!is.null(input$agence) && !is.na(st_bbox(agc)$xmin)) {
+      agc <- st_transform(agc, 2154) %>%
+        st_centroid() %>%
+        st_transform(4326) %>%
         st_geometry()
       leafletProxy('map0201') %>%
         setView(lat = st_coordinates(agc)[2], lng = st_coordinates(agc)[1], zoom = 10)
@@ -644,8 +784,10 @@ function(input, output, session) {
   
   observeEvent(input$forest, {
     frt <- polyfrt()
-    if (!is.null(input$forest)) {
-      frt <- st_centroid(frt) %>%
+    if (!is.null(input$forest) && !is.na(st_bbox(frt)$xmin)) {
+      frt <- st_transform(frt, 2154) %>%
+        st_centroid() %>%
+        st_transform(4326) %>%
         st_geometry()
       leafletProxy('map0201') %>%
         setView(lat = st_coordinates(frt)[2], lng = st_coordinates(frt)[1], zoom = 12)
@@ -653,15 +795,18 @@ function(input, output, session) {
   })
   
   polyprf <- reactive({
-    polyfrt <- parcelledata %>%
+    polyprf <- parcelledata %>%
       filter(ccod_prf == input$parcelle, ccod_frt == input$forest)
-    polyfrt
+    polyprf
   })
   
   observeEvent(input$parcelle, {
+    updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', outDATA()))
     prf <- polyprf()
-    if (!is.null(input$parcelle)) {
-      prf <- st_centroid(prf) %>%
+    if (!is.null(input$parcelle) && !is.na(st_bbox(prf)$xmin)) {
+      prf <- st_transform(prf, 2154) %>%
+        st_centroid() %>%
+        st_transform(4326) %>%
         st_geometry()
       leafletProxy('map0201') %>%
         setView(lat = st_coordinates(prf)[2], lng = st_coordinates(prf)[1], zoom = 14)
