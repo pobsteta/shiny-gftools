@@ -1,0 +1,74 @@
+---
+title: "COMPARAISON des volumes agence sur TARIFS LOCAUX et EMERGE estimé SR"
+author: "Pascal Obstetar"
+header-includes:
+   - \usepackage{rotating}
+output:
+  pdf_document
+params:
+  agence: NA
+  exercice : NA
+  clause : NULL
+  classearbremin : NA
+  classearbremax : NA
+  essence : NA
+  shape : NA
+  pst : NA
+  barre :  NA
+  res : NA
+---
+
+```{r global, echo=FALSE}
+library(xtable)
+```
+
+
+# Régions présentes sur l'agence
+  
+```{r shapefile, echo=FALSE, fig.height=5, fig.width=10}
+# On l'affiche en couleur des codeser
+map <- ggplot() +
+  geom_sf(data = st_as_sf(params$shape), aes(fill=reg, alpha=0.1), color = "white") +
+  geom_sf(data = params$pst, aes(fill=ccod_ut, alpha=1)) +
+  scale_alpha_continuous(guide = F) +
+  scale_fill_brewer(palette = "Set3", name = "Poste - SER") +
+  labs(title=paste("Agence - ", params$agence)) +
+  theme(axis.text = element_blank(),
+        line = element_blank())
+
+map
+```
+
+Le but de cette étude est de comparer, sur chaque région SER (Sylvo-Eco-Régions), RN250 (Région Nationale IFN) ou RF250 (Région Départementale IFN) d'une agence, les tarifs LOCAUX utilisés lors d'une campagne d'état d'assiette d'un exercice pour cuber les tiges, avec le tarif optimal (Schaeffer ou Algan) approchant le volume EMERGE et les pourcentages de houppier, des tiges IFN mesurées sur ces mêmes régions en prenant les découpes inscrites au cahier des clauses territoriales. On recube donc chaque tige de l'état d'assiette de l'agence avec le tarif optimal. Les tiges retenues sont celles des forêts intersectant les régions décrites. Une forêt assise sur plusieurs régions aura ses tiges comptant pour chaque région.
+Les pourcentages exprimés le sont toujours par rapport au volume EMERGE (E) estimé par un Schaeffer ou un Algan et le volume LOCAL (L) utilisé : % (arrondi à l'entier le plus proche) = 100 * (L / E - 1).
+Les essences Chêne sessile (IFN) et Chêne pédonculé (IFN) sont comparés à CHX, CHP et CHS regroupés (ONF). Le Sapin pectiné (IFN) est comapré à S.P et SAP regroupé (ONF).
+
+```{r echo=FALSE, warning=FALSE, results='asis'}
+for (reg in 1:length(unique(params$shape["code"]$code))) {
+  cat("\\newpage")
+  tab2 <- params$res[[reg]]$Tableau2
+  tab1 <- params$res[[reg]]$Tableau1
+  try(print(params$res[[reg]]$Carte, scalebox = 0.5), TRUE)
+  if (!is.null(tab2)) {
+    print(xtable(tab2, caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-", unique(params$shape["reg"]$reg)[reg])), comment = FALSE)
+  }
+  if (!is.null(tab1)) {
+    print(xtable(tab1, digits = 0, caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-", unique(params$shape["reg"]$reg)[reg])),
+        comment = FALSE, include.rownames = FALSE, rotate.colnames = TRUE, scalebox = 0.7)
+  }
+  cat("\\newpage ")
+  for (ess in 1:length(params$essence)) {
+    if (!is.null(params$res[[reg]][["Species"]][[ess]])) {
+      for (i in 1:6) {cat(params$res[[reg]][["Species"]][[ess]]$Texte[i], "\n")}
+      cat("\n")
+      print(params$res[[reg]][["Species"]][[ess]]$Graphe1)
+      print(xtable(params$res[[reg]][["Species"]][[ess]]$Tableau4, digits=0,
+      caption = paste0("Région SER : ", unique(params$shape["code"]$code)[reg], "-",
+                       unique(params$shape["reg"]$reg)[reg])), comment = FALSE, scalebox = 0.8, include.rownames = FALSE)
+    } else {
+      next
+    }
+    cat("\\newpage ")
+  }
+}
+```

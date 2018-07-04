@@ -137,10 +137,14 @@ fluidPage(
                          actionButton("update02", "Update", icon("refresh"), class = "btn btn-primary"),
                          checkboxInput("mappoint", " Utiliser data IFN", FALSE),
                          conditionalPanel("input.mappoint", uiOutput("Essences02")),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause"', sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map"', selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt))),
-                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map") && input.dt', selectInput("agence", "Agence :", c(Choisir=''))),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" && input.agence', actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary"))
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause"', 
+                                          sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)),
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map"', 
+                                          selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt))),
+                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map") && input.dt', 
+                                          selectInput("agence", "Agence :", c(Choisir=''))),
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" && input.agence', 
+                                          actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary"))
         ),
         conditionalPanel(condition='input.inTabset02 == "Resultat"',
                          uiOutput("show_vars")

@@ -9,7 +9,6 @@ library(shinyjs)
 library(leaflet)
 library(ggvis)
 library(ggrepel)
-library(RColorBrewer)
 library(raster)
 library(gstat)
 library(rgdal)
@@ -25,12 +24,10 @@ library(gftools)
 library(rhandsontable)
 library(tibble)
 library(tidyr)
-# With messages
+library(RColorBrewer)
 library(dplyr)
+library(xtable)
 library(sf)
-# Load sf and dplyr quietly
-# suppressMessages(library(sf))
-# suppressMessages(library(dplyr))
 
 options(pgsql = list(
   "host" = "0.0.0.0",
@@ -188,13 +185,14 @@ filec <- loadData("SELECT * FROM cahierclausedt")
 #' @param barre 
 #' @param agence 
 #' @param exercice 
+#' @param typzonecalc 
 #'
 #' @return
 #' @export
 #'
 #' @examples
-BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = NULL, clause = NULL, essence = c("02", "09"), classearbremin = 20, classearbremax = 80,
-                             barre = NULL, agence = 8415, exercice = 17) {
+BestTarifFindSch <- function(decemerge = 7, typvolemerge = 'total', zonecalc = NULL, clause = NULL, essence = c('02', '09'), classearbremin = 20, classearbremax = 80,
+                             barre = NULL, agence = 8415, exercice = 17, typzonecalc = 'ser') {
   split <- function(texte) {
     strsplit(texte, " ")[[1]][1]
   }
@@ -231,15 +229,15 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
     arbre <- data.frame(yrs = yrs, ifn$Arb[[1]][, c("idp", "espar", "c13", "w", "htot", "hdec", "veget")])
     arb <- rbind(arb, arbre)
   }
-  message("Extract data zonecalc...")
+  message(paste0("Extract data zonecalc: ", toupper(typzonecalc), "..."))
   zone <- sf::st_transform(zonecalc, crs = 2154)
-  codeser <- unique(zone["code"]$code)
-  listres <- vector("list", length(codeser)) 
-  nser <- length(codeser)
-  for (ser in 1:nser) {
-    serzone <- zone["code"] %>% dplyr::filter(code == codeser[ser])
-    message(paste0("Calcul pour la zone SER : ", codeser[ser], " (", ser, "/", nser, ")"))
-    placettes <- sf::st_intersection(sf::st_as_sf(plac, coords = c("xl93", "yl93"), crs = 2154, agr = "constant"), sf::st_geometry(serzone))
+  codereg <- unique(zone["code"]$code)
+  listres <- vector("list", length(codereg)) 
+  nreg <- length(codereg)
+  for (reg in 1:nreg) {
+    regzone <- zone["code"] %>% dplyr::filter(code == codereg[reg])
+    message(paste0("Calcul pour la zone ", toupper(typzonecalc), " : ", codereg[reg], " (", reg, "/", nreg, ")"))
+    placettes <- sf::st_intersection(sf::st_as_sf(plac, coords = c("xl93", "yl93"), crs = 2154, agr = "constant"), sf::st_geometry(regzone))
     # premier tableau data arbres
     tab <- arb %>%
       dplyr::filter(espar %in% essence) %>%
@@ -286,7 +284,6 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
       mutate_at(c("E_PHouppiers"), funs(as.integer(round(100 * . / (1 + .), 0)))) %>%
       arrange(Essence_Hou, Classe) %>%
       spread(Essence_Hou, E_PHouppiers)
-    
     tab <- tab %>%
       dplyr::filter(diam >= classearbremin & diam <= classearbremax) %>%
       dplyr::mutate(
@@ -300,7 +297,6 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
     res[, 5:7] <- round(res[, 5:7] ^ 0.5 / res[, 2:4], 2)
     res[, 2:4] <- round(res[, 2:4], 2)
     names(res) <- c("essence", "SR", "SL", "AL", "SRcv", "SLcv", "ALcv")
-    
     tab2 <- as.data.frame(res) %>%
       dplyr::mutate(tar = names(.)[max.col(.[5:7]*-1)+1L],
                     Best_tarif = case_when(
@@ -308,27 +304,23 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
                       tar == "SL" ~ paste0("SL", as.character(formatC(round(.[, c("SL")], 0), width=2, flag="0"))),
                       tar == "AL" ~ paste0("AL", as.character(formatC(round(.[, c("AL")], 0), width=2, flag="0")), "+"))) %>%
       dplyr::select(essence, SR, SL, AL, SRcv, SLcv, ALcv, Best_tarif)
-    
     tab3 <- tab %>%
       dplyr::distinct(essence, Classe) %>%
       group_by(Classe, essence) %>%
       dplyr::right_join(tab2[, c("essence", "Best_tarif")], by = c(essence = "essence")) %>%
       dplyr::ungroup()
-    
     tab4 <- tab3 %>%
       dplyr::mutate("Essence_Tar" = paste(tab3$essence, "Tar", sep="_")) %>%
       dplyr::select(Essence_Tar, Classe, Best_tarif) %>%
       arrange(Essence_Tar, Classe) %>%
       spread(Essence_Tar, Best_tarif) 
-    
     tab5 <- merge(tab1, tab4)
-    
     # calcul des graphes des essences comparant Best EMERGE avec LOCAL de ProdBois
     ness <- length(essence)
     # ness <- 10
     lres <- vector("list", ness)
     for (sp in 1:ness) {
-      barre$set(value = ness*(ser-1)+sp)
+      if (!is.null(barre)) {barre$set(value = ness*(reg-1)+sp)}
       species <- essence[sp]
       codess <- gftools::code_ifn_onf %>%
         filter(espar == species) %>%
@@ -349,13 +341,17 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
         qess <- "(ess='CHP' OR ess='CHX')" 
       } else if (species %in% c('03')) {
         qess <- "(ess='CHS' OR ess='CHX')"
+      } else if (species %in% c('61')) {
+        qess <- "(ess='SAP' OR ess='S.P')"
       } else {
         qess <- paste0("ess='", codess, "'")
       }
+      cc <- codereg[reg]
+      idreg <- zone %>% filter(code == cc) %>% pull(id) %>% paste(., collapse = ',')
       query <- sprintf("SELECT exercice, agence, ess AS essence, diam, haut, nb, tahd AS l_phouppiers, tacomd, volcu AS l_vbftigcom, volcu*(tahd/100.0) AS l_vhouppiers, 
-                volcu*(1+tahd/100.0) AS l_vbftot7cm FROM datacab d, forest f WHERE agence='%s' AND exercice=%s AND diam>0 AND tacomd!='0' AND %s
-                AND cofrt=ccod_frt AND agence=ccod_cact AND ser ~ '%s'",
-                agence, exercice, qess, codeser[ser]
+                volcu*(1+tahd/100.0) AS l_vbftot7cm FROM datacab d, forest f, %s r WHERE agence='%s' AND exercice=%s AND diam>0 AND tacomd!='0' AND %s
+                AND cofrt=ccod_frt AND agence=ccod_cact AND st_intersects(f.geom,r.geom) AND r.id IN (%s)",
+                       typzonecalc, agence, exercice, qess, idreg
       )
       res <- loadData(query = query)
       if (!is.null(res)) {
@@ -363,7 +359,6 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
           res <- res %>%
             mutate(classe = floor(diam / 5 + 0.5) * 5) %>%
             inner_join(mercuess, by = c(classe = "cdiam"))
-          
           tab <- res %>%
             mutate(
               e_vbftot7cm = as.numeric(TarifONF3v(tarif = tarif, entr1 = diam, entr2 = haut, details = FALSE)),
@@ -371,11 +366,18 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
               e_vbftigcom = e_vbftot7cm - e_vhouppiers,
               e_phouppiers = houppier / 100
             )
+          # on ne veut q'une essence
+          if (species %in% c("02", "03")) {
+            tab$essence <- 'CHX'
+          } else if (species %in% c('61')) {
+            tab$essence <- 'SAP'
+          } else {
+            tab$essence <- paste0("ess='", codess, "'")
+          }
           tab.r <- tab %>%
             mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
             group_by(exercice,agence,essence,classe) %>%
             summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm=TRUE)
-          
           resv <- gftools::describeBy(tab.r, group = tab.r$essence)
           txt <- paste0("ESSENCE ", nomess, " - AGENCE ", tab.r$agence[1], " - EXERCICE ", tab.r$exercice[1], " : ")
           for (r in length(resv):1) {
@@ -402,10 +404,8 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
                           voltot_L_E = 100 * (voltot_L / voltot_E - 1))
           names(table1) <- c("exercice","agence","essence","classe","vbftigcom_L","vhouppiers_L","vbftigcom_E","vhouppiers_E","voltot_E","voltot_L",
                              "%_vbftigcom_L_E","%_vhouppiers_L_E","%_voltot_L_E")
-          
           table2 <- table1 %>%
             gather("typvol", "vol", 5:13)
-          
           table3 <- table2 %>%
             dplyr::mutate("Class" = as.character(formatC(table2$classe, width=3, flag="0"))) %>%
             dplyr::select(exercice, agence, essence, Class, typvol, vol) %>%
@@ -414,7 +414,12 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
             mutate_if(is.numeric, funs(round(.,0)))
           
           table4 <- as.data.frame(table3[,-c(1:3)])
-          
+          table5 <- cbind(table4, Total = rowSums(table4[, -c(1)]))
+          table5$Total[1] <- 100 * (table5$Total[5] / table5$Total[4] - 1)
+          table5$Total[2] <- 100 * (table5$Total[7] / table5$Total[6] - 1)
+          table5$Total[3] <- 100 * (table5$Total[9] / table5$Total[8] - 1)
+          table5 <- table5 %>%
+            mutate_if(is.numeric, funs(round(.,0)))
           tab.t <- reshape2::melt(tab.r, id.vars = c("exercice","agence","essence","classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
             mutate(Type = substr(variable, 1, 2), variable = substr(variable, 4, 12))
           names(tab.t) <- c("exercice","agence","essence","classe","tarif","vol","type")
@@ -427,37 +432,30 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
             geom_bar(stat="identity", position = "stack") +
             facet_grid(agence + essence ~ classe) +
             scale_alpha_manual(values=c(1,0.1))
-          
-          lres[[sp]] <- list(tab.r, p, txt, table4)
+          lres[[sp]] <- list(tab.r, p, txt, table5)
           names(lres[[sp]]) <- c("Tableau3", "Graphe1", "Texte", "Tableau4")
         }
       }
       
-      # uniquement la région ser
-      cser <- codeser[ser]
+      # uniquement la région
+      creg <- codereg[reg]
       m <- zone %>%
-        dplyr::filter(code == cser)
-      
+        dplyr::filter(code == creg)
       poste <- BDDQueryONF(query = paste0("SELECT ccod_cact, ccod_ut, clib_pst, geom FROM pst WHERE ccod_ut LIKE '", agence, "%' ORDER BY ccod_ut"))
-      
       pst <- sf::st_intersection(m, sf::st_transform(poste, crs = 2154)) %>%
         fortify()
-      
       pstbbox <- sf::st_bbox(pst)
-      
       carte <- ggplot() +
-        ggplot2::geom_sf(data = sf::st_as_sf(m), aes(group=ser, alpha=0)) +
-        ggplot2::geom_sf(data = pst, aes(fill=ccod_ut, alpha=0.1)) +
-        scale_alpha_continuous(guide = F) +
+        ggplot2::geom_sf(data = sf::st_as_sf(m)) +
+        ggplot2::geom_sf(data = pst, aes(fill=ccod_ut)) +
         scale_fill_brewer(palette = "Set3", name = "Poste") +
-        labs(title=paste("Agence - ", agence, " : ", pst$code[1], "-", pst$ser[1])) +
+        labs(title=paste("Agence - ", agence, " : ", pst$code[1], "-", pst$reg[1])) +
         coord_sf(xlim = c(pstbbox[[1]], pstbbox[[3]]), ylim = c(pstbbox[[2]], pstbbox[[4]])) +
         theme(axis.text = element_blank(),
               line = element_blank(),
               plot.title = element_text(size = 10, color = "DarkGreen"))
-      
-      listres[[ser]] <- list(tab5, tab2, lres, carte)
-      names(listres[[ser]]) <- c("Tableau1", "Tableau2", "Species", "Carte")
+      listres[[reg]] <- list(tab5, tab2, lres, carte)
+      names(listres[[reg]]) <- c("Tableau1", "Tableau2", "Species", "Carte")
     }
   }
   message("...Calculation realized!")

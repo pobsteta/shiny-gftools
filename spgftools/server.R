@@ -498,7 +498,6 @@ function(input, output, session) {
   outCCT = reactive({
     cfile <- agencedata %>%
       filter(grepl(input$agence, iidtn_agc))
-    print(paste0("cfile: ", cfile$id))
     if (length(cfile$id) > 0) {
       cct <- filec %>%
         filter(agence %in% cfile$id)
@@ -665,13 +664,13 @@ function(input, output, session) {
   
   ## Nom du rapport
   outNameReport = reactive({
-    filename <- paste0("rapport_agence_", input$agence,"_au_", format(Sys.Date(),"%Y%m%d") , ".pdf")
+    filename <- paste0("rapport_agence_", input$agence, "_", toupper(input$zonecalc), "_au_", format(Sys.Date(),"%Y%m%d") , ".pdf")
     return(filename)
   })
   
   ## Rapport agence
   output$reportagence <- downloadHandler(
-    filename = outNameReport(),
+    filename = function() {outNameReport()},
     content = function(file) {
       # creer le rapport dans un repertoire temporaire avant de le télécharger
       tempReport <- file.path(tempdir(), "report.Rmd")
@@ -680,8 +679,11 @@ function(input, output, session) {
       CodesEssIFN <- gftools::getData("IFNCODE") %>%
         dplyr::filter(donnee %in% "ESPAR")
       
-      # on recherche les SER intersectant l agence
-      shapefileDF <- BDDQueryONF(query = paste0("SELECT a.iidtn_agc AS agence, s.code, s.name AS ser, s.geom FROM ser s, agence a WHERE st_dwithin(a.geom,s.geom,0) AND a.iidtn_agc='", input$agence, "'"))
+      # on recherche les SER, RN250 ou RF250 intersectant l agence
+      shapefileDF <- BDDQueryONF(query = paste0("SELECT s.id, a.iidtn_agc AS agence, ",
+                                                ifelse(input$zonecalc=='ser', 's.code', ifelse(input$zonecalc=='rn250', 's.regn', 's.regiond')) , " AS code, ",
+                                                ifelse(input$zonecalc=='ser', 's.name', ifelse(input$zonecalc=='rn250', 's.regionn', 's.regionn')) , " AS reg, s.geom FROM ",
+                                                input$zonecalc, " s, agence a WHERE st_intersects(a.geom,s.geom) AND a.iidtn_agc='", input$agence, "'"))
       # on recherche les UTs de l agence
       poste <- BDDQueryONF(query = paste0("SELECT ccod_cact, ccod_ut, clib_pst, geom FROM pst WHERE ccod_ut LIKE '", input$agence, "%' ORDER BY ccod_ut"))
       # instancie la barre de proression
@@ -704,7 +706,8 @@ function(input, output, session) {
                                        classearbremin = input$ClasseInf[1],
                                        classearbremax = input$ClasseInf[2],
                                        essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
-                                       barre = progress)
+                                       barre = progress,
+                                       typzonecalc = input$zonecalc)
               # on prend les parametres en compte pour le rapport markdown
               params = list(agence = input$agence,
                             exercice = input$exercice,
@@ -717,7 +720,11 @@ function(input, output, session) {
                             barre = progress,
                             res = resu)
               progress$set(value = maxi - 3)
+              # suppress warnings  
+              storeWarn<- getOption("warn")
+              options(warn = -1)
               rmarkdown::render(tempReport, output_file = file, params = params, envir = new.env(parent = globalenv()))
+              options(warn = storeWarn)
               progress$set(value = maxi - 2)
             },
             message = function(m) {
