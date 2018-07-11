@@ -4,3 +4,6 @@
 .Rproj.user
 .RData
 spgftools/rsconnect/
+application.yml
+shinyproxy-1.1.1.jar
+shinyproxy.log

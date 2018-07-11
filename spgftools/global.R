@@ -31,11 +31,12 @@ library(sf)
 
 options(pgsql = list(
   "host" = "0.0.0.0",
+  "port" = 35432,
   # "host" = "167.99.143.72",
-  "port" = 5432,
+  # "port" = 35432,
   "user" = "tryton",
   "password" = "tryton",
-  "dbname" = "onf"
+  "dbname" = "tryton"
 ))
 
 pool <- dbPool(
