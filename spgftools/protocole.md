@@ -2,7 +2,9 @@
 title: "Protocole"
 author: "Bruno Chopard, Pascal Obstetar"
 date: "29 mars 2018"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ## Protocole pour le recueil de données dendrométriques dans les peuplements martelés pour déterminer le n° de barème de cubage de bois sur pied (Schaeffer rapide, Schaeffer lent, Algan) rendant le mieux compte du volume calculé avec le tarif Emerge [(Protocole BFC)](./www/ProtocoleRecueilDonneesDendroCubageBSP_PO_20170124.pdf).

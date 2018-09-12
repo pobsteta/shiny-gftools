@@ -4,6 +4,10 @@
 .Rproj.user
 .RData
 spgftools/rsconnect/
+spgftools/protocole.html
+spgftools/protocole.pdf
+spgftools/.Rhistory
 application.yml
 shinyproxy-1.1.1.jar
-shinyproxy.log
+shinyproxy-*
+shinyproxy.log*
