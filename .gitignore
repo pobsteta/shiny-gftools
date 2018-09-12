@@ -11,3 +11,4 @@ application.yml
 shinyproxy-1.1.1.jar
 shinyproxy-*
 shinyproxy.log*
+Dockerfile
