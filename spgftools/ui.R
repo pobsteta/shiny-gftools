@@ -139,9 +139,9 @@ fluidPage(
                          conditionalPanel("input.mappoint", uiOutput("Essences02")),
                          conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause"', 
                                           sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map"', 
+                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe"', 
                                           selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt))),
-                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map") && input.dt', 
+                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe") && input.dt', 
                                           selectInput("agence", "Agence :", c(Choisir=''))),
                          conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" && input.agence', 
                                           actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary"))

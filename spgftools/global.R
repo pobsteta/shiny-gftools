@@ -32,8 +32,8 @@ library(sf)
 options(pgsql = list(
   "host" = "0.0.0.0",
   "port" = 35432,
-  # "host" = "172.19.128.27",
-  # "port" = 35432,
+  #"host" = "172.19.128.27",
+  #"port" = 35432,
   "user" = "tryton",
   "password" = "tryton",
   "dbname" = "tryton"
