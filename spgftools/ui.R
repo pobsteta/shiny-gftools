@@ -156,9 +156,11 @@ fluidPage(
             '(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe") && input.dt',
             selectInput("agence", "Agence :", c(Choisir = ""))
           ),
-          conditionalPanel("input.agence && input.mappoint", downloadButton(
-            "reportagence", "Rapport Agence",
-            class = "btn btn-primary"
+          conditionalPanel(
+            'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence && input.mappoint',
+            downloadButton(
+              "reportagence", "Rapport Agence",
+              class = "btn btn-primary"
           )),
           conditionalPanel(
             'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence',
@@ -363,14 +365,19 @@ fluidPage(
                 4,
                 conditionalPanel("input.agence", uiOutput("Essences03"))
               ),
-              column(12, textOutput("text04")),
-              column(12, plotOutput("plotdatacab"))
+              column(
+                12,
+                plotOutput("plotdatacab")
+              ),
+              column(
+                12,
+                # fluidRow(column(6, conditionalPanel("input.agence", h3(" ")))),
+                # br(),
+                verbatimTextOutput("localmercu")
+              )
             ), # end fluidrow
-            column(
-              12,
-              fluidRow(column(6, conditionalPanel("input.agence", h3(" ")))),
-              br(),
-              verbatimTextOutput("localmercu")
+            fluidRow(
+              column(12, textOutput("text04"))
             )
           ),
           tabPanel(

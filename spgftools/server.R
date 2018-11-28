@@ -975,7 +975,7 @@ function(input, output, session) {
     if (input$update02 == 0) return(NULL)
     if (is.null(filemercu())) return(NULL)
     if (is.null(filedata())) return(NULL)
-    withProgress(message = "Comparaison des résultats", style = "notification", value = 0.5, {
+    withProgress(message = "Graphique des résultats", style = "notification", value = 0.5, {
       Sys.sleep(0.25)
       resv <- gftools::describeBy(tabdata(), group = tabdata()$essence)
       incProgress(1)
@@ -1330,54 +1330,58 @@ function(input, output, session) {
   tablocalmercu <- reactive({
     input$update022
     if (input$update022 == 0) return(NULL)
-    query <- sprintf(
-      "SELECT exercice, agence, ess AS essence, diam, haut, nb, tahd AS l_phouppiers, tacomd, volcu AS l_vbftigcom, volcu*(tahd/100.0) AS l_vhouppiers, 
+    withProgress(message = "Calcul en cours", style = "notification", value = 0.5, {
+      Sys.sleep(0.25)
+      query <- sprintf(
+        "SELECT exercice, agence, ess AS essence, diam, haut, nb, tahd AS l_phouppiers, tacomd, volcu AS l_vbftigcom, volcu*(tahd/100.0) AS l_vhouppiers, 
       volcu*(1+tahd/100.0) AS l_vbftot7cm FROM datacab WHERE agence='%s' AND exercice=%s AND diam>0 AND tacomd!='0'",
-      input$agence, input$exercice
-    )
-    res <- loadData(query = query)
-    if (!is.null(res)) {
-      if (nrow(res) > 0) {
-        mer <- readr::read_tsv(
-          mname,
-          locale = readr::locale(encoding = "UTF-8", decimal_mark = "."),
-          readr::cols(cdiam = readr::col_integer(), tarif = readr::col_character(), houppier = readr::col_integer(), hauteur = readr::col_double()),
-          col_names = T
-        ) %>%
-          filter(!is.na(tarif))
-        res <- res %>%
-          mutate(classe = floor(diam / 5 + 0.5) * 5) %>%
-          inner_join(mer, by = c(classe = "cdiam"))
-        tab <- res %>%
-          mutate(
-            e_vbftot7cm = as.numeric(TarifONF3v(tarif = tarif, entr1 = diam, entr2 = haut, details = FALSE)),
-            e_vhouppiers = e_vbftot7cm * houppier / 100,
-            e_vbftigcom = e_vbftot7cm - e_vhouppiers,
-            e_phouppiers = houppier / 100
-          )
-        tab.r <- tab %>%
-          mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
-          group_by(exercice, agence, essence, classe) %>%
-          summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm = TRUE)
-        tab.s <- tab %>%
-          mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
-          group_by(exercice, agence, classe) %>%
-          summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm = TRUE) %>%
-          mutate(essence = "Toutes")
-        tab1 <- bind_rows(tab.r, tab.s)
-
-        tab.t <- reshape2::melt(tab1, id.vars = c("exercice", "agence", "essence", "classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
-          mutate(Type = substr(variable, 1, 2), variable = substr(variable, 4, 12))
-        names(tab.t) <- c("exercice", "agence", "essence", "classe", "tarif", "vol", "type")
-        tab.t$type[which(tab.t$type == "tl")] <- "LOCAL"
-        tab.t$type[which(tab.t$type == "te")] <- "EMERCU"
-        tab.t$tarif[which(tab.t$tarif == "vhouppier")] <- "VHouppiers"
-        tab.t$tarif[which(tab.t$tarif == "vbftigcom")] <- "VbftigCom"
-        out <- list(tab1, tab.t)
-        names(out) <- c("Tableau1", "Tableau2")
-        return(out)
+        input$agence, input$exercice
+      )
+      res <- loadData(query = query)
+      if (!is.null(res)) {
+        if (nrow(res) > 0) {
+          mer <- readr::read_tsv(
+            mname,
+            locale = readr::locale(encoding = "UTF-8", decimal_mark = "."),
+            readr::cols(cdiam = readr::col_integer(), tarif = readr::col_character(), houppier = readr::col_integer(), hauteur = readr::col_double()),
+            col_names = T
+          ) %>%
+            filter(!is.na(tarif))
+          res <- res %>%
+            mutate(classe = floor(diam / 5 + 0.5) * 5) %>%
+            inner_join(mer, by = c(classe = "cdiam"))
+          tab <- res %>%
+            mutate(
+              e_vbftot7cm = as.numeric(TarifONF3v(tarif = tarif, entr1 = diam, entr2 = haut, details = FALSE)),
+              e_vhouppiers = e_vbftot7cm * houppier / 100,
+              e_vbftigcom = e_vbftot7cm - e_vhouppiers,
+              e_phouppiers = houppier / 100
+            )
+          tab.r <- tab %>%
+            mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
+            group_by(exercice, agence, essence, classe) %>%
+            summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm = TRUE)
+          tab.s <- tab %>%
+            mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
+            group_by(exercice, agence, classe) %>%
+            summarise_at(c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers", "nb"), sum, na.rm = TRUE) %>%
+            mutate(essence = "Toutes")
+          tab1 <- bind_rows(tab.r, tab.s)
+          
+          tab.t <- reshape2::melt(tab1, id.vars = c("exercice", "agence", "essence", "classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
+            mutate(Type = substr(variable, 1, 2), variable = substr(variable, 4, 12))
+          names(tab.t) <- c("exercice", "agence", "essence", "classe", "tarif", "vol", "type")
+          tab.t$type[which(tab.t$type == "tl")] <- "LOCAL"
+          tab.t$type[which(tab.t$type == "te")] <- "EMERCU"
+          tab.t$tarif[which(tab.t$tarif == "vhouppier")] <- "VHouppiers"
+          tab.t$tarif[which(tab.t$tarif == "vbftigcom")] <- "VbftigCom"
+          out <- list(tab1, tab.t)
+          names(out) <- c("Tableau1", "Tableau2")
+          return(out)
+        }
       }
-    }
+      incProgress(1)
+    })
   })
 
   # Affichage du graphe de comparaison des volumes agences
@@ -1413,9 +1417,9 @@ function(input, output, session) {
         "Pour l'essence ", names(resv[r]), " :\n - l'estimation LOCAL cube ", round(100 * ((resv[[r]]["tl_vbftigcom", "sum"] + resv[[r]]["tl_vhouppiers", "sum"]) / (resv[[r]]["te_vbftigcom", "sum"] + resv[[r]]["te_vhouppiers", "sum"]) - 1), 0),
         "% du volume bois fort total decoupe 7cm EMERCU, ", round(100 * (resv[[r]]["tl_vbftigcom", "sum"] / resv[[r]]["te_vbftigcom", "sum"] - 1), 0),
         "% du volume bois fort tige EMERCU et ", round(100 * (resv[[r]]["tl_vhouppiers", "sum"] / resv[[r]]["te_vhouppiers", "sum"] - 1), 0),
-        "% du volume houppiers EMERCU :\n- le volume bois fort tige commercial LOCAL est de ", round(resv[[r]]["tl_vbftigcom", "sum"], 0),
+        "% du volume houppiers EMERCU :\n - le volume bois fort tige commercial LOCAL est de ", round(resv[[r]]["tl_vbftigcom", "sum"], 0),
         " m3, le volume bois fort tige commercial EMERCU est de ", round(resv[[r]]["te_vbftigcom", "sum"], 0),
-        " m3,\n- le volume houppier LOCAL est de ", round(resv[[r]]["tl_vhouppiers", "sum"], 0),
+        " m3,\n - le volume houppier LOCAL est de ", round(resv[[r]]["tl_vhouppiers", "sum"], 0),
         " m3, le volume houppier EMERCU est de ", round(resv[[r]]["te_vhouppiers", "sum"], 0), " m3.\n"
       )
     }
