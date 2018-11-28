@@ -156,6 +156,10 @@ fluidPage(
             '(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe") && input.dt',
             selectInput("agence", "Agence :", c(Choisir = ""))
           ),
+          conditionalPanel("input.agence && input.mappoint", downloadButton(
+            "reportagence", "Rapport Agence",
+            class = "btn btn-primary"
+          )),
           conditionalPanel(
             'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence',
             actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary")
@@ -286,7 +290,7 @@ fluidPage(
                 fluidRow(
                   column(
                     6,
-                    h2("Modifiez la mercuriale, cliquez sur save pour la sauvegarder")
+                    h3("Modifiez la mercuriale, cliquez sur save pour la sauvegarder")
                   ),
                   br(),
                   column(
@@ -352,15 +356,21 @@ fluidPage(
             ), # end fluidrow
             fluidRow(
               column(
-                12,
-                conditionalPanel("input.agence", h3("Comparaison des résultats sur l'agence pour l'essence")),
-                conditionalPanel("input.agence", uiOutput("Essences03")),
+                4,
+                conditionalPanel("input.agence", h3("Comparaison des résultats sur l'agence pour l'essence"))
+                ),
+              column(
+                4,
+                conditionalPanel("input.agence", uiOutput("Essences03"))
+              ),
+              column(
+                4,
                 conditionalPanel("input.agence && input.mappoint", downloadButton(
                   "reportagence", "Rapport Agence",
                   class = "btn btn-primary"
-                )),
-                column(12, textOutput("text04"))
+                ))
               ),
+              column(12, textOutput("text04")),
               column(12, plotOutput("plotdatacab"))
             ), # end fluidrow
             column(
