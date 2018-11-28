@@ -266,8 +266,11 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
     tab1 <- tab %>%
       dplyr::mutate(clo = splitv(esscct)) %>%
       dplyr::left_join(clo, by = c(clo = "ess"))
+    # on gere les essences esscct decrites dans la mercuriale
     tab2 <- tab1 %>%
-      dplyr::filter(!is.na(dmin))
+      dplyr::filter(!is.na(dmin)) %>%
+      dplyr::filter(Classe >= dmin & Classe <= dmax)
+    # on gere les essences esscct non decrites dans la mercuriale
     tab3 <- tab1 %>%
       dplyr::filter(is.na(dmin)) %>%
       dplyr::select(espar, htot, hdec, diam, essence, Classe, fr, clo, tarif, houppier, hauteur) %>%
@@ -277,11 +280,12 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
     tab4$decemerge <- ifelse(!is.na(tab4$dmin) & tab4$Classe >= tab4$dmin, tab4$dec, tab4$defaut)
     tab <- tab4 %>%
       dplyr::select(espar, essence, diam, Classe, htot, hdec, decemerge, tarif, hauteur, houppier)
+    
     tab <- cbind(tab, E_VbftigCom = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "tige", dec = tab$decemerge))
-    tab <- cbind(tab, E_VHouppiers = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "houp", dec = tab$decemerge))
     tab <- cbind(tab, E_Vbftot7cm = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "total", dec = 7)) %>%
       dplyr::mutate(E_PHouppiers = E_Vbftot7cm / E_VbftigCom - 1) %>%
-      dplyr::filter(!is.na(E_Vbftot7cm))
+      dplyr::filter(!is.na(E_Vbftot7cm)) %>%
+      dplyr::mutate(E_VHouppiers = E_Vbftot7cm - E_VbftigCom)
     tab1 <- tab %>%
       mutate("Essence_Hou" = paste(tab$essence, "Hou", sep = "_")) %>%
       dplyr::select(Essence_Hou, Classe, E_PHouppiers) %>%

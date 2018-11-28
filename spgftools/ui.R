@@ -358,17 +358,10 @@ fluidPage(
               column(
                 4,
                 conditionalPanel("input.agence", h3("Comparaison des résultats sur l'agence pour l'essence"))
-                ),
-              column(
-                4,
-                conditionalPanel("input.agence", uiOutput("Essences03"))
               ),
               column(
                 4,
-                conditionalPanel("input.agence && input.mappoint", downloadButton(
-                  "reportagence", "Rapport Agence",
-                  class = "btn btn-primary"
-                ))
+                conditionalPanel("input.agence", uiOutput("Essences03"))
               ),
               column(12, textOutput("text04")),
               column(12, plotOutput("plotdatacab"))
