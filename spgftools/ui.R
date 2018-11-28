@@ -76,12 +76,14 @@ fluidPage(
       mainPanel(
         width = 10,
         tabsetPanel(
-          tabPanel("Plot",
+          tabPanel(
+            "Plot",
             h2("Analyse des accroissements courants annuels moyens sur 5 ans"),
             textOutput("text01"),
             plotOutput("plotzip1", height = 800)
           ),
-          tabPanel("Map",
+          tabPanel(
+            "Map",
             leafletOutput("map", height = 800)
           )
         )
@@ -98,69 +100,87 @@ fluidPage(
                     "))
       ),
       shinyjs::useShinyjs(),
-      sidebarPanel(width = 2,
-        conditionalPanel(condition='input.inTabset02 != "Resultat"',
-                         helpText("Comparaison du volume bois fort Total (découpe 7cm)"),
-                         conditionalPanel("!input.hot", fileInput(
-                           "datafile",
-                           "Choisir Data CSV",
-                           accept = c(".csv")
-                         )),
-                         conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", 
-                                          selectInput("listedata", "Choisir Data BDD", c('Choisir DATA'=''))
-                         ),
-                         conditionalPanel("!input.hot", fileInput(
-                           "mercufile",
-                           "Choisir Mercu CSV",
-                           accept = c(".csv")
-                         )),
-                         conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", 
-                                          selectInput("listemercu", "Choisir Mercu BDD", c('Choisir MERCU'=''))
-                         ),
-                         fileInput(
-                           "clausefile",
-                           "Choisir CCT CSV",
-                           accept = c(".csv")
-                         ),
-                         conditionalPanel("input.agence && input.dt", 
-                                          selectInput("listeclause", "Choisir Clause BDD", c('Choisir Clause'=''))
-                         ),
-                         sliderInput(
-                           "ClasseInf", "Classe Diam Arbre:",
-                           min = 10, max = 120,
-                           value = c(25, 80), step = 5
-                         ),
-                         helpText(
-                           "Note: classe de diamètre pour le",
-                           "calcul, par défaut : 25 - 80."
-                         ),
-                         actionButton("update02", "Update", icon("refresh"), class = "btn btn-primary"),
-                         checkboxInput("mappoint", " Utiliser data IFN", FALSE),
-                         conditionalPanel("input.mappoint", uiOutput("Essences02")),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause"', 
-                                          sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe"', 
-                                          selectInput("dt", "DT :", c(Choisir='', dtdata$iidtn_dt))),
-                         conditionalPanel('(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe") && input.dt', 
-                                          selectInput("agence", "Agence :", c(Choisir=''))),
-                         conditionalPanel('input.inTabset02 == "Data/Mercuriale/Clause" && input.agence', 
-                                          actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary"))
+      sidebarPanel(
+        width = 2,
+        conditionalPanel(
+          condition = 'input.inTabset02 != "Resultat"',
+          helpText("Comparaison du volume bois fort Total (découpe 7cm)"),
+          conditionalPanel("!input.hot", fileInput(
+            "datafile",
+            "Choisir Data CSV",
+            accept = c(".csv")
+          )),
+          conditionalPanel(
+            "input.forest && input.agence && input.dt && input.parcelle",
+            selectInput("listedata", "Choisir Data BDD", c("Choisir DATA" = ""))
+          ),
+          conditionalPanel("!input.hot", fileInput(
+            "mercufile",
+            "Choisir Mercu CSV",
+            accept = c(".csv")
+          )),
+          conditionalPanel(
+            "input.forest && input.agence && input.dt && input.parcelle && input.listedata",
+            selectInput("listemercu", "Choisir Mercu BDD", c("Choisir MERCU" = ""))
+          ),
+          fileInput(
+            "clausefile",
+            "Choisir CCT CSV",
+            accept = c(".csv")
+          ),
+          conditionalPanel(
+            "input.agence && input.dt",
+            selectInput("listeclause", "Choisir Clause BDD", c("Choisir Clause" = ""))
+          ),
+          sliderInput(
+            "ClasseInf", "Classe Diam Arbre:",
+            min = 10, max = 120,
+            value = c(25, 80), step = 5
+          ),
+          helpText(
+            "Note: classe de diamètre pour le",
+            "calcul, par défaut : 25 - 80."
+          ),
+          actionButton("update02", "Update", icon("refresh"), class = "btn btn-primary"),
+          checkboxInput("mappoint", " Utiliser data IFN", FALSE),
+          conditionalPanel("input.mappoint", uiOutput("Essences02")),
+          conditionalPanel(
+            'input.inTabset02 == "Data/Mercuriale/Clause"',
+            sliderInput("exercice", "Exercice:", min = 10, max = 19, value = 17)
+          ),
+          conditionalPanel(
+            'input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe"',
+            selectInput("dt", "DT :", c(Choisir = "", dtdata$iidtn_dt))
+          ),
+          conditionalPanel(
+            '(input.inTabset02 == "Data/Mercuriale/Clause" || input.inTabset02 == "Map" || input.inTabset02 == "Graphe") && input.dt',
+            selectInput("agence", "Agence :", c(Choisir = ""))
+          ),
+          conditionalPanel(
+            'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence',
+            actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary")
+          )
         ),
-        conditionalPanel(condition='input.inTabset02 == "Resultat"',
-                         uiOutput("show_vars")
+        conditionalPanel(
+          condition = 'input.inTabset02 == "Resultat"',
+          uiOutput("show_vars")
         )
       ),
       mainPanel(
         width = 10,
-        tabsetPanel(id = "inTabset02",
-          tabPanel("Definition",
+        tabsetPanel(
+          id = "inTabset02",
+          tabPanel(
+            "Definition",
             includeMarkdown("definition.md"),
             tableOutput("data_table")
           ),
-          tabPanel("Protocole",
-                   includeMarkdown("protocole.md")
+          tabPanel(
+            "Protocole",
+            includeMarkdown("protocole.md")
           ),
-          tabPanel("Graphe",
+          tabPanel(
+            "Graphe",
             h2("Comparaison des volumes par application des tarifs (LOCAL/EMERGE/SchR/SchL/Algan)"),
             textOutput("text02"),
             verbatimTextOutput("Samnbtig"),
@@ -217,117 +237,150 @@ fluidPage(
               )
             )
           ),
-          tabPanel("En bref",
-                   verbatimTextOutput("Resvol"),
-                   verbatimTextOutput("summarycsv")
+          tabPanel(
+            "En bref",
+            verbatimTextOutput("Resvol"),
+            verbatimTextOutput("summarycsv")
           ),
-          tabPanel("Resultat",
-                   fluidRow(
-                     column(12,
-                            fluidRow(column(6,
-                                    h2("Cliquez sur save pour sauvegarder le tableau")
-                            ),
-                            br(),
-                            column(3,
-                                   downloadButton(
-                                     "saveBtnData", "Save",
-                                     class = "btn btn-primary"
-                                   )),
-                            column(2,
-                                   conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", textInput(
-                                     "nomData", NULL
-                                   ))),
-                            column(1,
-                                   conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", actionButton(
-                                     "saveBtnDataBDD", "Save BDD",
-                                     class = "btn btn-primary"
-                                   )))
-                            )
-                     )),
-                   DT::dataTableOutput("tablecsv1")),
-          tabPanel("Data/Mercuriale/Clause",
-                   fluidRow(
-                     column(12,
-                            fluidRow(column(6,
-                                     h2("Modifiez la mercuriale, cliquez sur save pour la sauvegarder")
-                            ),
-                            br(),
-                            column(3,
-                                   downloadButton(
-                                    "saveBtnMercu", "Save",
-                                    class = "btn btn-primary"
-                                  )),
-                            column(2,
-                                   conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", textInput(
-                                     "nomMercu", NULL
-                                   ))),
-                            column(1,
-                                   conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", actionButton(
-                                     "saveBtnMercuBDD", "Save BDD",
-                                     class = "btn btn-primary"
-                                   )))
-                           )
-                     )),
-                   fluidRow(
-                     column(2,
-                            rHandsontableOutput("datahot")
-                     ),
-                     column(2,
-                            rHandsontableOutput("mercuhot")
-                     ),
-                     column(3,
-                            selectInput("espar", "Essence :", c(Choisir='')),
-                            fluidRow(
-                                column(6,
-                                         selectInput("tarif", "Tarif :", c(Choisir='', listetarif))),
-                                column(4,
-                                       conditionalPanel("input.tarif && input.espar", selectInput("numtarif", "Numéro :", c(Choisir='', 1:20))))
-                            ),
-                            conditionalPanel("input.tarif", actionButton(
-                              "transmercu", "<<< Transférer la mercuriale EMERGE <<<",
-                              class = "btn btn-primary")),
-                            h5("Cahier des clauses territoriales :"),
-                            rHandsontableOutput("clausehot")
-                     ),
-                     column(5,
-                            rHandsontableOutput("reshot")
-                     )
-                   ),
-                   fluidRow(
-                     column(12,
-                            fluidRow(column(6, 
-                                            conditionalPanel("input.agence", h2("Comparaison des résultats sur l'agence pour l'essence"))),
-                                     br(),
-                                     column(3,
-                                            conditionalPanel("input.agence && input.mappoint",downloadButton(
-                                              "reportagence", "Rapport Agence",
-                                              class = "btn btn-primary"
-                                            ))),
-                                     column(4,
-                                            conditionalPanel("input.agence", uiOutput("Essences03"))),
-                            br(),
-                            column(12, textOutput("text04")),
-                            plotOutput("plotdatacab")
-                            )
-                     ),
-                     br(),
-                     column(12,
-                            fluidRow(column(6, conditionalPanel("input.agence", h3(" ")))),
-                            br(),
-                            verbatimTextOutput("localmercu")
-                            )
-                   )
+          tabPanel(
+            "Resultat",
+            fluidRow(
+              column(
+                12,
+                fluidRow(
+                  column(
+                    6,
+                    h2("Cliquez sur save pour sauvegarder le tableau")
+                  ),
+                  br(),
+                  column(
+                    3,
+                    downloadButton(
+                      "saveBtnData", "Save",
+                      class = "btn btn-primary"
+                    )
+                  ),
+                  column(
+                    2,
+                    conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", textInput(
+                      "nomData", NULL
+                    ))
+                  ),
+                  column(
+                    1,
+                    conditionalPanel("input.forest && input.agence && input.dt && input.parcelle", actionButton(
+                      "saveBtnDataBDD", "Save BDD",
+                      class = "btn btn-primary"
+                    ))
+                  )
+                )
+              )
+            ),
+            DT::dataTableOutput("tablecsv1")
           ),
-          tabPanel("Map",
+          tabPanel(
+            "Data/Mercuriale/Clause",
+            fluidRow(
+              column(
+                12,
+                fluidRow(
+                  column(
+                    6,
+                    h2("Modifiez la mercuriale, cliquez sur save pour la sauvegarder")
+                  ),
+                  br(),
+                  column(
+                    3,
+                    downloadButton(
+                      "saveBtnMercu", "Save",
+                      class = "btn btn-primary"
+                    )
+                  ),
+                  column(
+                    2,
+                    conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", textInput(
+                      "nomMercu", NULL
+                    ))
+                  ),
+                  column(
+                    1,
+                    conditionalPanel("input.forest && input.agence && input.dt && input.parcelle && input.listedata", actionButton(
+                      "saveBtnMercuBDD", "Save BDD",
+                      class = "btn btn-primary"
+                    ))
+                  )
+                )
+              )
+            ), # end fluidrow
+            fluidRow(
+              column(
+                2,
+                rHandsontableOutput("datahot")
+              ),
+              column(
+                2,
+                rHandsontableOutput("mercuhot")
+              ),
+              column(
+                3,
+                selectInput("espar", "Essence :", c(Choisir = "")),
+                fluidRow(
+                  column(
+                    6,
+                    selectInput("tarif", "Tarif :", c(Choisir = "", listetarif))
+                  ),
+                  column(
+                    4,
+                    conditionalPanel("input.tarif && input.espar", selectInput("numtarif", "Numéro :", c(Choisir = "", 1:20)))
+                  )
+                ),
+                conditionalPanel("input.tarif", actionButton(
+                  "transmercu", "<<< Transférer la mercuriale EMERGE <<<",
+                  class = "btn btn-primary"
+                )),
+                h5("Cahier des clauses territoriales :"),
+                rHandsontableOutput("clausehot")
+              ),
+              column(
+                2,
+                rHandsontableOutput("reshot")
+              ),
+              column(
+                3,
+                plotOutput("plotcsv13", height = 700)
+              )
+            ), # end fluidrow
+            fluidRow(
+              column(
+                12,
+                conditionalPanel("input.agence", h3("Comparaison des résultats sur l'agence pour l'essence")),
+                conditionalPanel("input.agence", uiOutput("Essences03")),
+                conditionalPanel("input.agence && input.mappoint", downloadButton(
+                  "reportagence", "Rapport Agence",
+                  class = "btn btn-primary"
+                )),
+                column(12, textOutput("text04"))
+              ),
+              column(12, plotOutput("plotdatacab"))
+            ), # end fluidrow
+            column(
+              12,
+              fluidRow(column(6, conditionalPanel("input.agence", h3(" ")))),
+              br(),
+              verbatimTextOutput("localmercu")
+            )
+          ),
+          tabPanel(
+            "Map",
             h2("Cliquez sur la carte pour centrer la position des calculs"),
             fluidRow(
               column(
                 width = 4,
-                conditionalPanel("input.agence && input.dt", selectInput("forest", "Forêt :", c(Choisir='')))
+                conditionalPanel("input.agence && input.dt", selectInput("forest", "Forêt :", c(Choisir = "")))
               ),
               column(
                 width = 1,
-                conditionalPanel("input.forest && input.agence && input.dt", selectInput("parcelle", "Parcelle :", c(Choisir='')))
+                conditionalPanel("input.forest && input.agence && input.dt", selectInput("parcelle", "Parcelle :", c(Choisir = "")))
               ),
               column(
                 width = 2,
@@ -339,8 +392,9 @@ fluidPage(
               ),
               column(
                 width = 2,
-                conditionalPanel("input.mappoint", selectInput("zonecalc", "Zone calcul :", c('ser','rn250','rf250', 'pst')))
-              )),
+                conditionalPanel("input.mappoint", selectInput("zonecalc", "Zone calcul :", c("ser", "rn250", "rf250", "pst")))
+              )
+            ),
             fluidRow(
               column(
                 width = 12,
@@ -350,11 +404,11 @@ fluidPage(
             fluidRow(
               column(
                 width = 6,
-                leafletOutput("map0201", width=730, height = 700)
+                leafletOutput("map0201", width = 730, height = 700)
               ),
               column(
                 width = 6,
-                leafletOutput("map0202", width=730, height = 700)
+                leafletOutput("map0202", width = 730, height = 700)
               )
             )
           )
