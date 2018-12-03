@@ -268,10 +268,11 @@ function(input, output, session) {
       incProgress(1)
     })
     mhouppier <<- "N"
+    print(paste("mappoint :", input$mappoint))
     if (!input$mappoint) {
       echant <<- p$Tableau5
     }
-    print(paste("echant: ", echant))
+    print(paste("echant: ", head(echant)))
     p
   })
 
