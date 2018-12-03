@@ -271,6 +271,7 @@ function(input, output, session) {
     if (!input$mappoint) {
       echant <<- p$Tableau5
     }
+    print(paste("echant: ", echant))
     p
   })
 
