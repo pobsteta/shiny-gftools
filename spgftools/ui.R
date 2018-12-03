@@ -362,8 +362,16 @@ fluidPage(
                 conditionalPanel("input.agence", h3("Comparaison des résultats sur l'agence pour l'essence"))
               ),
               column(
-                4,
+                1,
                 conditionalPanel("input.agence", uiOutput("Essences03"))
+              ),
+              column(
+                1,
+                conditionalPanel("input.agence", h3("Unité terri."))
+              ),
+              column(
+                2,
+                conditionalPanel("input.agence", uiOutput("ut"))
               ),
               column(
                 12,

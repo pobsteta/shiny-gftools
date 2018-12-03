@@ -64,6 +64,9 @@ listessence <- c("Defaut", "Chene", "Hetre", "Autres feuillus", "Epicea", "Sapin
 # houppier compris
 mhouppier <- "N"
 
+# tableau htot=f(diam) de l echantillon
+echant <- NULL
+
 # Vectorize TarONF3
 TarifONF3v <- Vectorize(gftools::TarONF3)
 
@@ -197,7 +200,7 @@ filec <- loadData("SELECT * FROM cahierclausedt")
 #' @export
 #'
 #' @examples
-BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = NULL, clause = NULL, essence = c("02", "09"), classearbremin = 20, classearbremax = 80,
+BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "total", zonecalc = NULL, clause = NULL, essence = c("02", "09"), classearbremin = 20, classearbremax = 80,
                              barre = NULL, agence = 8415, exercice = 17, typzonecalc = "ser") {
   split <- function(texte) {
     strsplit(texte, " ")[[1]][1]
@@ -205,7 +208,17 @@ BestTarifFindSch <- function(decemerge = 7, typvolemerge = "total", zonecalc = N
   splitv <- Vectorize(split)
   TarONF3v <- Vectorize(gftools::TarONF3)
   message("Extract mercuriale file...")
-  mer <- data.frame(cdiam = seq(from = 10, to = 120, by = 5), tarif = rep("SR14", 23), houppier = c(rep(0, 3), rep(30, 20)), hauteur = rep(0, 23))
+  if (!is.null(mercuriale)) {
+    mer <- readr::read_tsv(
+      mercuriale,
+      locale = readr::locale(encoding = "UTF-8", decimal_mark = "."),
+      readr::cols(cdiam = readr::col_integer(), tarif = readr::col_character(), houppier = readr::col_integer(), hauteur = readr::col_double()),
+      col_names = T
+    ) %>%
+      filter(!is.na(tarif))
+  } else {
+    mer <- data.frame(cdiam = seq(from = 10, to = 120, by = 5), tarif = rep("SR14", 23), houppier = c(rep(0, 3), rep(30, 20)), hauteur = rep(0, 23))
+  }
   if (!is.null(clause)) {
     clo <- readr::read_tsv(
       clause,
