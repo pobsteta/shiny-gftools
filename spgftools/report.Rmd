@@ -16,6 +16,7 @@ params:
   pst : NA
   barre :  NA
   res : NA
+  typzonecalc : NA
 ---
 
 ```{r global, echo=FALSE}
@@ -31,7 +32,7 @@ map <- ggplot() +
   geom_sf(data = st_as_sf(params$shape), aes(fill=reg, alpha=0.1), color = "white") +
   geom_sf(data = params$pst, aes(fill=ccod_ut, alpha=1)) +
   scale_alpha_continuous(guide = F) +
-  scale_fill_brewer(palette = "Set3", name = "Poste - SER") +
+  scale_fill_brewer(palette = "Set3", name = paste("Poste -", toupper(params$typzonecalc))) +
   labs(title=paste("Agence - ", params$agence)) +
   theme(axis.text = element_blank(),
         line = element_blank())
@@ -43,9 +44,23 @@ Le but de cette étude est de comparer, sur chaque région SER (Sylvo-Eco-Régio
 Les pourcentages exprimés le sont toujours par rapport au volume EMERGE (E) estimé par un Schaeffer ou un Algan et le volume LOCAL (L) utilisé : % (arrondi à l'entier le plus proche) = 100 * (L / E - 1).
 Les essences Chêne sessile (IFN) et Chêne pédonculé (IFN) sont comparés à CHX, CHP et CHS regroupés (ONF). Le Sapin pectiné (IFN) est comapré à S.P et SAP regroupé (ONF).
 
+```{r echo=FALSE, warning=FALSE, results='tabrecap'}
+df <- bres[[1]]$Tableau2[,c(1,2,9)]
+for (reg in 2:length(unique(params$shape["code"]$code))) {
+  # df <- cbind(df, bres[[reg]]$Tableau2[,c(9)])
+  df <- df %>%
+    right_join(params$res[[reg]]$Tableau2[,c(1,2,9)], by=c(essence="essence", categorie="categorie"))
+}
+names(df) <- c("essence", "categorie", unique(params$shape["code"]$code))
+cat("\\newpage ")
+print(xtable(df, caption = "Meilleur tarif par région", comment = FALSE, scalebox = 1, include.rownames = FALSE))
+```
+
+
 ```{r echo=FALSE, warning=FALSE, results='asis'}
 for (reg in 1:length(unique(params$shape["code"]$code))) {
-  cat("\\newpage")
+  cat("\\newpage ")
+  cat("\n")
   tab2 <- params$res[[reg]]$Tableau2
   tab1 <- params$res[[reg]]$Tableau1
   try(print(params$res[[reg]]$Carte, scalebox = 0.5), TRUE)
@@ -57,15 +72,19 @@ for (reg in 1:length(unique(params$shape["code"]$code))) {
         comment = FALSE, include.rownames = FALSE, rotate.colnames = TRUE, scalebox = 0.7)
   }
   cat("\\newpage ")
+  cat("\n")
   for (ess in 1:length(params$essence)) {
     if (!is.null(params$res[[reg]][["Species"]][[ess]])) {
       for (i in 1:6) {cat(params$res[[reg]][["Species"]][[ess]]$Texte[i], "\n")}
       cat("\n")
       print(params$res[[reg]][["Species"]][[ess]]$Graphe1)
       print(xtable(params$res[[reg]][["Species"]][[ess]]$Tableau4, digits=0,
-      caption = paste0("Région SER : ", unique(params$shape["code"]$code)[reg], "-",
+      caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-",
                        unique(params$shape["reg"]$reg)[reg])), comment = FALSE, scalebox = 0.8, include.rownames = FALSE)
     } else {
+      cat("\n")
+      print("AUCUNE DONNÉE POUR L'ESSENCE, POUR L'EXERCICE ET LA REGION CONSIDÉRÉE.")
+      cat("\n")
       next
     }
     cat("\\newpage ")

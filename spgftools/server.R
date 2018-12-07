@@ -120,6 +120,10 @@ function(input, output, session) {
       readr::write_tsv(hot_to_r(input$clausehot), cname)
       print(paste("observe c:", cname))
     }
+    if (!is.null(input$cathot)) {
+      readr::write_tsv(hot_to_r(input$cathot), tname)
+      print(paste("observe t:", tname))
+    }
   })
 
 
@@ -127,6 +131,10 @@ function(input, output, session) {
   filedata <- reactive({
     datafile <- input$datafile
     if (is.null(datafile)) return(NULL)
+    # tableau htot=f(diam) de l echantillon
+    echant <<- NULL
+    echanttab3 <<- NULL
+    echanttab4 <<- NULL
     dataf <<- readr::read_tsv(
       datafile$datapath,
       locale = readr::locale(encoding = "UTF-8", decimal_mark = ","),
@@ -160,6 +168,30 @@ function(input, output, session) {
         hot_table(highlightCol = TRUE, highlightRow = TRUE)
     })
     mercu
+  })
+  
+  # fichier des categories de diametre
+  filecat <- reactive({
+      cat <- data.frame(ess = rep(c("Feu", "Res"), times=1, each=6), 
+                         cat = rep(c("Sem", "Per","PB","BM","GB","TGB"), times=2), 
+                         dmin = c(0,10,20,30,50,70,0,10,20,30,45,65), 
+                         dmax = c(5,15,25,45,65,200,5,15,25,40,60,200)
+      )
+      readr::write_tsv(cat, tname)
+      print(paste("filecat:", tname))
+      output$cathot <<- renderRHandsontable({
+        items1 <- c("Feu", "Res")
+        items2 <- c("Sem", "Per","PB","BM","GB","TGB")
+        dmin <- seq(from = 0, by = 5, length.out = 41)
+        dmax <- seq(from = 0, by = 5, length.out = 41)
+        rhandsontable(cat, rowHeaders = NULL, height = 200, width = 300) %>%
+          hot_cols(colWidths = 70) %>%
+          hot_col(col = "ess", type = "dropdown", source = items1) %>%
+          hot_col(col = "cat", type = "dropdown", source = items2) %>%
+          hot_col(col = "dmin", type = "dropdown", source = dmin) %>%
+          hot_col(col = "dmax", type = "dropdown", source = dmax) %>%
+          hot_table(highlightCol = TRUE, highlightRow = TRUE)
+      })
   })
 
   # fichier des clauses
@@ -256,6 +288,11 @@ function(input, output, session) {
             houppier = mhouppier,
             echantillon = echant
           )
+          if (!input$mappoint) {
+            echant <<- p$Tableau5
+            echanttab3 <<- p$Tableau3
+            echanttab4 <<- p$Tableau4
+          }
         },
         message = function(m) {
           shinyjs::html(id = "text02", html = m$message, add = TRUE)
@@ -268,11 +305,6 @@ function(input, output, session) {
       incProgress(1)
     })
     mhouppier <<- "N"
-    print(paste("mappoint :", input$mappoint))
-    if (!input$mappoint) {
-      echant <<- p$Tableau5
-    }
-    print(paste("echant: ", head(echant)))
     p
   })
 
@@ -434,25 +466,45 @@ function(input, output, session) {
 
   plotgraphe <- eventReactive(c(input$espar, input$tarif), {
     if (!is.null(input$tarif) & input$tarif != "" & input$espar != "Toutes" & !is.null(input$espar) & !(is.null(plotdata()$Tableau4))) {
-      no <- plotdata()$Tableau4$Type[4 - as.integer(input$tarif)]
-      mt <- plotdata()$Tableau4 %>%
-        filter(essence == input$espar & Type == no)
-      dt <- plotdata()$Tableau3 %>%
-        filter(essence == input$espar & Type == no)
+      no1 <- plotdata()$Tableau4$Type[4 - as.integer(input$tarif)]
+      mt1 <- plotdata()$Tableau4 %>%
+        filter(essence == input$espar & Type == no1)
+      mt1$Fill <- ifelse(input$mappoint, toupper(input$zonecalc), "ECH")
+      dt1 <- plotdata()$Tableau3 %>%
+        filter(essence == input$espar & Type == no1)
+      dt1$Fill <- ifelse(input$mappoint, toupper(input$zonecalc), "ECH")
+      
+      if (input$mappoint) {
+        no2 <- echanttab4$Type[4 - as.integer(input$tarif)]
+        mt2 <- echanttab4 %>%
+          filter(essence == input$espar & Type == no2)
+        mt2$Fill <- "ECH"
+        dt2 <- echanttab3 %>%
+          filter(essence == input$espar & Type == no2)
+        dt2$Fill <- "ECH"
+        dt <- rbind(dt1, dt2)
+        mt <- rbind(mt1, mt2)
+      } else {
+        dt <- dt1
+        mt <- mt1
+      }
+      
       isolate({
         withProgress(message = "Graphique en cours", style = "notification", value = 0.75, {
           Sys.sleep(0.25)
           withCallingHandlers({
             shinyjs::html(id = "text02", html = "Go ! ")
-            g <- ggplot(dt, aes(x = diam, y = Num)) + geom_point(alpha = 0.1) +
+            h <- ggplot(dt, aes(x = diam, y = Num, fill = Fill, order = Fill)) + 
+              geom_point(alpha = 0.1) +
               facet_grid(essence ~ Type) +
-              geom_boxplot(outlier.colour = "green", outlier.size = 2, notch = TRUE, alpha = 0.1, fill = "green") +
+              geom_boxplot(outlier.colour = "green", outlier.size = 2, notch = TRUE, alpha = 0.1) +
               geom_label(data = mt, aes(x = DMax + 15, label = round(Num, 0), y = Num), col = "red") +
-              geom_label(data = mt, aes(x = DMax + 15, label = round(m_plus_sd, 0), y = m_plus_sd), col = "blue", alpha = 0.1) +
-              geom_label(data = mt, aes(x = DMax + 15, label = round(m_moins_sd, 0), y = m_moins_sd), col = "blue", alpha = 0.1) +
-              geom_errorbar(data = mt, mapping = aes(x = DMax + 10, ymin = m_moins_sd, ymax = m_plus_sd), size = 0.5, color = "blue", width = 2) +
-              geom_smooth(method = "lm") +
-              geom_point(data = mt, aes(x = DMax + 10), color = "red")
+              geom_label(data = mt, aes(x = DMax + 15, label = round(m_plus_sd, 0), y = m_plus_sd, fill = Fill), alpha = 0.1) +
+              geom_label(data = mt, aes(x = DMax + 15, label = round(m_moins_sd, 0), y = m_moins_sd, fill = Fill), alpha = 0.1) +
+              geom_errorbar(data = mt, mapping = aes(x = DMax + 10, ymin = m_moins_sd, ymax = m_plus_sd, fill = Fill), size = 0.5, width = 2) +
+              geom_point(data = mt, aes(x = DMax + 10), color = "red") +
+              guides(fill=guide_legend(title=" ")) +
+              theme(legend.position = "bottom")
           },
           message = function(m) {
             shinyjs::html(id = "text02", html = m$message, add = TRUE)
@@ -464,7 +516,7 @@ function(input, output, session) {
         })
         incProgress(1)
       })
-      g
+      h
     }
   })
 
@@ -764,7 +816,8 @@ function(input, output, session) {
             classearbremax = input$ClasseInf[2],
             essence = CodesEssIFN$code[which(CodesEssIFN$libelle %in% input$Essences02)],
             barre = progress,
-            typzonecalc = input$zonecalc
+            typzonecalc = input$zonecalc,
+            categorie = tname
           )
           # on prend les parametres en compte pour le rapport markdown
           params <- list(
@@ -777,7 +830,8 @@ function(input, output, session) {
             shape = shapefileDF,
             pst = poste,
             barre = progress,
-            res = resu
+            res = resu,
+            typzonecalc = input$zonecalc
           )
           progress$set(value = maxi - 3)
           # suppress warnings
@@ -812,6 +866,10 @@ function(input, output, session) {
       filter(iidtn_dt == input$dt)
     polydt
   })
+  
+  observeEvent(input$zonecalc, {
+    leafletProxy("map0203")
+  })
 
   observeEvent(input$dt, {
     dt <- polydt()
@@ -823,6 +881,7 @@ function(input, output, session) {
       leafletProxy("map0201") %>%
         setView(lat = st_coordinates(dt)[2], lng = st_coordinates(dt)[1], zoom = 8)
     }
+    leafletProxy("map0203")
   })
 
   polyagc <- reactive({
@@ -944,6 +1003,46 @@ function(input, output, session) {
       addCircles(data = placettesmap, popup = popupplacettes, weight = 3, radius = 60, color = "#ff00e6", fill = TRUE, stroke = TRUE, fillOpacity = 0.1, group = "Placette IFN") %>%
       addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !") %>%
       addLayersControl(overlayGroups = c("Zone de calcul", "Placette IFN"), options = layersControlOptions(collapsed = TRUE))
+  })
+  
+  output$map0203 <- renderLeaflet({
+    if (!input$mappoint | input$agence == '') return(NULL)
+    if (is.null(pointclick$clickedMarker$lat)) return(NULL)
+    shapefileDF <- BDDQueryONF(query = paste0(
+      "SELECT s.id, a.iidtn_agc AS agence, ",
+      ifelse(input$zonecalc == "ser", "s.code", ifelse(input$zonecalc == "rn250", "s.regn", "s.regiond")), " AS code, ",
+      ifelse(input$zonecalc == "ser", "s.name", ifelse(input$zonecalc == "rn250", "s.regionn", "s.regionn")), " AS reg, s.geom FROM ",
+      input$zonecalc, " s, agence a WHERE st_intersects(a.geom,s.geom) AND a.iidtn_agc='", input$agence, "'"
+    ))
+    if (is.null(shapefileDF$id)) {
+      return(NULL)
+    } else {
+      box <- st_bbox(shapefileDF)
+      factpal <- colorFactor(rep(unique(yarrr::piratepal("basel")),
+                                 length.out = nrow(shapefileDF)),
+                             shapefileDF$code)
+      popupzone <- paste0("<strong>", shapefileDF$code, " - </strong>", shapefileDF$reg)
+      leaflet() %>%
+        addTiles(group = "OpenStreetMap") %>%
+        addTiles("https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png",
+                 group = "OpenTopoMap"
+        ) %>%
+        # addProviderTiles(providers$CartoDB.Positron, group = "CartoDB") %>%
+        addTiles("https://cartodb-basemaps-{s}.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png",
+                 group = "CartoDB"
+        ) %>%
+        # addProviderTiles(providers$Esri.WorldImagery, group = "Satellite") %>%
+        addTiles("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                 group = "Satellite"
+        ) %>%
+        # view and controls
+        addPolygons(data = shapefileDF, weight = 2, fillColor = ~factpal(shapefileDF$code), popup = popupzone, group = "Zone") %>%
+        addLayersControl(overlayGroups = c("Zone"), 
+                         baseGroups = c("OpenStreetMap", "OpenTopoMap", "CartoDB", "Satellite"),
+                         options = layersControlOptions(collapsed = TRUE)) %>%
+        addMarkers(lat = pointclick$clickedMarker$lat, lng = pointclick$clickedMarker$lng, popup = "Localisation du calcul !") %>%
+        fitBounds(lng1 = box[[1]], lat1 = box[[2]], lng2 = box[[3]], lat2 = box[[4]])
+    }
   })
 
   zonecalcul <- eventReactive({
@@ -1177,12 +1276,24 @@ function(input, output, session) {
     filem <<- loadData(query = query)
     updateSelectInput(session, "listemercu", choices = c("Choisir MERCU" = "", filem$name))
   })
+  
+  # Catdiam
+  Catdiam <- reactive({
+    if (!is.null(input$cathot)) {
+      as.data.frame(hot_to_r(input$cathot))
+    } else if (!is.null(filecat())) {
+      filecat()
+    } else {
+      return(NULL)
+    }
+  })
 
   # Clauseter
   Clauseter <- reactive({
     if (!is.null(input$clausehot)) {
       as.data.frame(hot_to_r(input$clausehot))
     } else if (!is.null(fileclause())) {
+      filecat()
       fileclause()
     } else {
       return(NULL)
@@ -1192,7 +1303,6 @@ function(input, output, session) {
   # Affichage Clauseter
   output$Clauseter <- renderText({
     if (is.null(Clauseter())) return(NULL)
-    Ess <- Clauseter()$ess
     Txt <- paste0(
       "Pour l'essence ", Clauseter()$ess, ", de la classe ", Clauseter()$dmin, " à la classe ", Clauseter()$dmax, ", la découpe fin bout est de ", Clauseter()$dec, " cm.\n"
     )
@@ -1279,7 +1389,7 @@ function(input, output, session) {
     } else {
       return(NULL)
     }
-    rhandsontable(DF, width = 280, height = 500, rowHeaders = NULL) %>%
+    rhandsontable(DF, width = 300, height = 200, rowHeaders = NULL) %>%
       hot_table(highlightCol = TRUE, highlightRow = TRUE)
   })
 

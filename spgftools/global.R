@@ -28,6 +28,7 @@ library(RColorBrewer)
 library(dplyr)
 library(xtable)
 library(sf)
+library(yarrr)
 
 options(pgsql = list(
   "host" = "0.0.0.0",
@@ -56,6 +57,7 @@ onStop(function() {
 mname <- tempfile(fileext = ".csv")
 fname <- tempfile(fileext = ".csv")
 cname <- tempfile(fileext = ".csv")
+tname <- tempfile(fileext = ".csv")
 
 # liste des tarifs
 listetarif <- setNames(1:3, c("SR", "SL", "AL"))
@@ -63,9 +65,6 @@ listessence <- c("Defaut", "Chene", "Hetre", "Autres feuillus", "Epicea", "Sapin
 
 # houppier compris
 mhouppier <- "N"
-
-# tableau htot=f(diam) de l echantillon
-echant <- NULL
 
 # Vectorize TarONF3
 TarifONF3v <- Vectorize(gftools::TarONF3)
@@ -195,12 +194,16 @@ filec <- loadData("SELECT * FROM cahierclausedt")
 #' @param agence
 #' @param exercice
 #' @param typzonecalc
+#' @param mercuriale 
+#' @param categorie 
 #'
 #' @return
 #' @export
 #'
 #' @examples
-BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "total", zonecalc = NULL, clause = NULL, essence = c("02", "09"), classearbremin = 20, classearbremax = 80,
+BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "total", zonecalc = NULL, 
+                             clause = NULL, categorie = NULL,
+                             essence = c("02", "09"), classearbremin = 20, classearbremax = 80,
                              barre = NULL, agence = 8415, exercice = 17, typzonecalc = "ser") {
   split <- function(texte) {
     strsplit(texte, " ")[[1]][1]
@@ -219,6 +222,7 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
   } else {
     mer <- data.frame(cdiam = seq(from = 10, to = 120, by = 5), tarif = rep("SR14", 23), houppier = c(rep(0, 3), rep(30, 20)), hauteur = rep(0, 23))
   }
+  message("Extract clause file...")
   if (!is.null(clause)) {
     clo <- readr::read_tsv(
       clause,
@@ -227,7 +231,23 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       col_names = T
     )
   } else {
-    clo <- data.frame(ess = "Defaut", dmin = 10, dmax = 200, dec = 7)
+    clo <- as_tibble(data.frame(ess = "Defaut", dmin = 10, dmax = 200, dec = 7, stringsAsFactors=FALSE))
+  }
+  message("Extract categorie file...")
+  if (!is.null(categorie)) {
+    categorie <- readr::read_tsv(
+      categorie,
+      locale = readr::locale(encoding = "UTF-8", decimal_mark = "."),
+      readr::cols(ess = readr::col_character(), cat = readr::col_character(), dmin = readr::col_integer(), dmax = readr::col_integer()),
+      col_names = T
+    )
+  } else {
+    categorie <- data.frame(ess = rep(c("Feu", "Res"), times=1, each=6), 
+                      cat = rep(c("Sem", "Per","PB","BM","GB","TGB"), times=2), 
+                      dmin = c(0,10,20,30,50,70,0,10,20,30,45,65), 
+                      dmax = c(5,15,25,45,65,200,5,15,25,40,60,200),
+                      stringsAsFactors=FALSE
+    ) 
   }
   message("Extract IFN data...")
   vecteur_annee <- c(2008:2016)
@@ -269,7 +289,12 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       dplyr::mutate(espar = as.character(espar)) %>%
       dplyr::left_join(gftools::code_ifn_onf, by = c(espar = "espar")) %>%
       dplyr::filter(!is.na(htot)) %>%
-      dplyr::mutate(esscct = ifelse(splitv(essence) %in% c("Hetre", "Chene", "Pin"), splitv(essence), fr))
+      dplyr::mutate(esscct = ifelse(splitv(essence) %in% c("Hetre", "Chene", "Pin"), splitv(essence), fr),
+                    ess = ifelse(fr == "Autres feuillus", "Feu", "Res"))
+    ## verifie si tab est vide = pas de data essence pour la region
+    if (nrow(tab) == 0) {
+      next
+    }
     ## creation des tableaux
     tab <- tab %>%
       dplyr::mutate(Classe = as.integer(floor(diam / 5 + 0.5) * 5)) %>%
@@ -282,17 +307,24 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
     # on gere les essences esscct decrites dans la mercuriale
     tab2 <- tab1 %>%
       dplyr::filter(!is.na(dmin)) %>%
-      dplyr::filter(Classe >= dmin & Classe <= dmax)
+      dplyr::filter(Classe >= dmin & Classe <= dmax) %>%
+      dplyr::select(espar, htot, hdec, diam, essence, ess, Classe, fr, clo, tarif, houppier, hauteur, dmin, dmax, dec)
     # on gere les essences esscct non decrites dans la mercuriale
     tab3 <- tab1 %>%
       dplyr::filter(is.na(dmin)) %>%
-      dplyr::select(espar, htot, hdec, diam, essence, Classe, fr, clo, tarif, houppier, hauteur) %>%
+      dplyr::select(espar, htot, hdec, diam, essence, ess, Classe, fr, clo, tarif, houppier, hauteur) %>%
       dplyr::left_join(clo, by = c(fr = "ess"))
     tab4 <- dplyr::bind_rows(tab2, tab3) %>%
       dplyr::mutate(defaut = defo)
     tab4$decemerge <- ifelse(!is.na(tab4$dmin) & tab4$Classe >= tab4$dmin, tab4$dec, tab4$defaut)
+    # on gere une mercuriale avec seulement Defaut
+    if (nrow(clo) == 1) {
+      tab4$dmin <- ifelse(is.na(tab4$dmin), clo[1, 2]$dmin)
+      tab4$dmax <- ifelse(is.na(tab4$dmax), clo[1, 3]$dmax)
+      tab4$dec <- ifelse(is.na(tab4$dec), clo[1, 4]$dec)
+    } 
     tab <- tab4 %>%
-      dplyr::select(espar, essence, diam, Classe, htot, hdec, decemerge, tarif, hauteur, houppier)
+      dplyr::select(espar, essence, ess, diam, Classe, htot, hdec, decemerge, tarif, hauteur, houppier)
     
     tab <- cbind(tab, E_VbftigCom = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "tige", dec = tab$decemerge))
     tab <- cbind(tab, E_Vbftot7cm = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "total", dec = 7)) %>%
@@ -308,34 +340,39 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       mutate_at(c("E_PHouppiers"), funs(as.integer(round(100 * . / (1 + .), 0)))) %>%
       arrange(Essence_Hou, Classe) %>%
       spread(Essence_Hou, E_PHouppiers)
+    # tableau par categorie (PB,BM,GB,TGB)
     tab <- tab %>%
+      left_join(categorie, by = c(ess = "ess")) %>%
+      filter(Classe >= dmin & Classe <= dmax) %>%
       dplyr::filter(diam >= classearbremin & diam <= classearbremax) %>%
       dplyr::mutate(
         numSchR = E_Vbftot7cm / 5 * 70000 / (diam - 5) / (diam - 10) - 8,
         numSchL = E_Vbftot7cm / 5 * 90000 / diam / (diam - 5) - 8,
         numAlg = E_Vbftot7cm * 28000000 / (310000 - 45200 * diam + 2390 * diam^2 - 2.9 * diam^3) - 8
-      )
+      ) 
     res <- tab %>%
-      dplyr::group_by(essence) %>%
+      dplyr::group_by(essence,cat) %>%
       dplyr::summarise_at(c("numSchR", "numSchL", "numAlg"), funs(mean, var))
-    res[, 5:7] <- round(res[, 5:7]^0.5 / res[, 2:4], 2)
-    res[, 2:4] <- round(res[, 2:4], 2)
-    names(res) <- c("essence", "SR", "SL", "AL", "SRcv", "SLcv", "ALcv")
+    res[, 6:8] <- round(res[, 6:8]^0.5 / res[, 3:5], 3)
+    res[, 3:5] <- round(res[, 3:5], 3)
+    names(res) <- c("essence", "categorie", "SR", "SL", "AL", "SRcv", "SLcv", "ALcv")
     tab2 <- as.data.frame(res) %>%
       dplyr::mutate(
-        tar = names(.)[max.col(.[5:7] * -1) + 1L],
+        tar = names(.)[max.col(.[6:8] * -1) + 2L],
         Best_tarif = case_when(
           tar == "SR" ~ paste0("SR", as.character(formatC(round(.[, c("SR")], 0), width = 2, flag = "0"))),
           tar == "SL" ~ paste0("SL", as.character(formatC(round(.[, c("SL")], 0), width = 2, flag = "0"))),
           tar == "AL" ~ paste0("AL", as.character(formatC(round(.[, c("AL")], 0), width = 2, flag = "0")), "+")
         )
       ) %>%
-      dplyr::select(essence, SR, SL, AL, SRcv, SLcv, ALcv, Best_tarif)
+      dplyr::select(essence, categorie, SR, SL, AL, SRcv, SLcv, ALcv, Best_tarif)
+    
     tab3 <- tab %>%
-      dplyr::distinct(essence, Classe) %>%
-      group_by(Classe, essence) %>%
-      dplyr::right_join(tab2[, c("essence", "Best_tarif")], by = c(essence = "essence")) %>%
+      dplyr::distinct(essence, Classe, cat) %>%
+      group_by(Classe, essence, cat) %>%
+      dplyr::right_join(tab2[, c("essence", "Best_tarif", "categorie")], by = c(essence = "essence", cat = "categorie")) %>%
       dplyr::ungroup()
+    
     tab4 <- tab3 %>%
       dplyr::mutate("Essence_Tar" = paste(tab3$essence, "Tar", sep = "_")) %>%
       dplyr::select(Essence_Tar, Classe, Best_tarif) %>%
@@ -402,7 +439,7 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
           } else if (species %in% c("61")) {
             tab$essence <- "SAP"
           } else {
-            tab$essence <- paste0("ess='", codess, "'")
+            tab$essence <- codess
           }
           tab.r <- tab %>%
             mutate(tl_vbftigcom = l_vbftigcom * nb, tl_vhouppiers = l_vhouppiers * nb, te_vbftigcom = e_vbftigcom * nb, te_vhouppiers = e_vhouppiers * nb) %>%
@@ -413,20 +450,20 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
           for (r in length(resv):1) {
             txt[2] <- paste0("Pour l'essence ", names(resv[r]), ",")
             txt[3] <- paste0(
-              " l'estimation LOCAL cube ", round(100 * ((resv[[r]]["tl_vbftigcom", "sum"] + resv[[r]]["tl_vhouppiers", "sum"]) /
+              " l'estimation L (LOCAL) cube ", round(100 * ((resv[[r]]["tl_vbftigcom", "sum"] + resv[[r]]["tl_vhouppiers", "sum"]) /
                 (resv[[r]]["te_vbftigcom", "sum"] + resv[[r]]["te_vhouppiers", "sum"]) - 1), 0),
-              "% du volume bois fort total decoupe 7cm EMERCU, ", round(100 * (resv[[r]]["tl_vbftigcom", "sum"] / resv[[r]]["te_vbftigcom", "sum"] - 1), 0),
-              "% du volume bois fort tige EMERCU et ", round(100 * (resv[[r]]["tl_vhouppiers", "sum"] / resv[[r]]["te_vhouppiers", "sum"] - 1), 0),
-              "% du volume houppiers EMERCU ("
+              "% du volume bois fort total decoupe 7cm E (EMERCU), ", round(100 * (resv[[r]]["tl_vbftigcom", "sum"] / resv[[r]]["te_vbftigcom", "sum"] - 1), 0),
+              "% du volume bois fort tige E et ", round(100 * (resv[[r]]["tl_vhouppiers", "sum"] / resv[[r]]["te_vhouppiers", "sum"] - 1), 0),
+              "% du volume houppiers E ("
             )
             txt[4] <- paste0(
-              "le volume bois fort tige commercial LOCAL est de ", round(resv[[r]]["tl_vbftigcom", "sum"], 0),
-              " m3, le volume bois fort tige commercial EMERCU est de ", round(resv[[r]]["te_vbftigcom", "sum"], 0),
+              "le volume bois fort tige commercial L est de ", round(resv[[r]]["tl_vbftigcom", "sum"], 0),
+              " m3, le volume bois fort tige commercial E est de ", round(resv[[r]]["te_vbftigcom", "sum"], 0),
               " m3,"
             )
             txt[5] <- paste0(
-              "le volume houppier LOCAL est de ", round(resv[[r]]["tl_vhouppiers", "sum"], 0),
-              " m3 et le volume houppier EMERCU est de ", round(resv[[r]]["te_vhouppiers", "sum"], 0), " m3."
+              "le volume houppier L est de ", round(resv[[r]]["tl_vhouppiers", "sum"], 0),
+              " m3 et le volume houppier E est de ", round(resv[[r]]["te_vhouppiers", "sum"], 0), " m3."
             )
           }
           txt[6] <- paste0("Les tarifs locaux utilisés sont : ", paste(unique(res$tacomd), collapse = ", "), ".")
@@ -462,8 +499,8 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
           tab.t <- reshape2::melt(tab.r, id.vars = c("exercice", "agence", "essence", "classe"), measure.vars = c("tl_vbftigcom", "tl_vhouppiers", "te_vbftigcom", "te_vhouppiers")) %>%
             mutate(Type = substr(variable, 1, 2), variable = substr(variable, 4, 12))
           names(tab.t) <- c("exercice", "agence", "essence", "classe", "tarif", "vol", "type")
-          tab.t$type[which(tab.t$type == "tl")] <- "LOCAL"
-          tab.t$type[which(tab.t$type == "te")] <- "EMERCU"
+          tab.t$type[which(tab.t$type == "tl")] <- "L"
+          tab.t$type[which(tab.t$type == "te")] <- "E"
           tab.t$tarif[which(tab.t$tarif == "vhouppier")] <- "VHouppiers"
           tab.t$tarif[which(tab.t$tarif == "vbftigcom")] <- "VbftigCom"
           p <- ggplot(tab.t, aes(x = type, y = vol, group = type, fill = type, alpha = tarif)) +

@@ -159,9 +159,15 @@ fluidPage(
           conditionalPanel(
             'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence && input.mappoint',
             downloadButton(
-              "reportagence", "Rapport Agence",
+              "reportfiche", "Fiche échantillon résultat (pdf)",
               class = "btn btn-primary"
-          )),
+            )),
+          conditionalPanel(
+              'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence && input.mappoint',
+              downloadButton(
+                "reportagence", "Rapport Agence/Région IFN (pdf)",
+                class = "btn btn-primary"
+            )),
           conditionalPanel(
             'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence',
             actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary")
@@ -349,7 +355,10 @@ fluidPage(
               ),
               column(
                 2,
-                rHandsontableOutput("reshot")
+                h5("Mercuriale EMERGE :"),
+                rHandsontableOutput("reshot"),
+                h5("Catégories de diamètre :"),
+                rHandsontableOutput("cathot")
               ),
               column(
                 3,
@@ -379,8 +388,6 @@ fluidPage(
               ),
               column(
                 12,
-                # fluidRow(column(6, conditionalPanel("input.agence", h3(" ")))),
-                # br(),
                 verbatimTextOutput("localmercu")
               )
             ), # end fluidrow
@@ -427,6 +434,10 @@ fluidPage(
               column(
                 width = 6,
                 leafletOutput("map0202", width = 730, height = 700)
+              ),
+              column(
+                width = 12,
+                leafletOutput("map0203", height = 700)
               )
             )
           )
