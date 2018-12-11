@@ -1,0 +1,117 @@
+---
+title: "Fiche"
+output: 
+  word_document:
+    reference_docx: mystyles.docx
+params:
+  agence : NA
+  exercice : NA
+  frt : NA
+  prf : NA
+  echantillon : NA
+  echant : NA
+  data : NA
+  espar : NA
+  tarif : NA
+  graphe : NA
+  texte01 : NULL
+  texte02 : NULL
+  texte03 : NULL
+  zonecalc : NA
+  mercutop : NA
+  map : NA
+  graphe2 : NA
+---
+
+```{r setup, include=FALSE}
+library(pander)
+library(knitr)
+knitr::opts_chunk$set(echo = FALSE)
+```
+
+**Échantillon - `r params$echantillon`**  
+Forêt : `r params$prf$llib_frt`  
+Parcelle : `r params$prf$ccod_prf`
+
+```{r textes}
+if (nrow(params$texte01) > 0) {
+  nbtig <- nrow(params$texte01)
+  nbess <- unique(params$texte01$code)
+  listess <- paste(nbess, collapse = ", ")
+  Txt01 <- paste0(
+    " L'échantillon contient ", nbtig, " tige(s) désignée(s) et ", length(nbess), " essence(s) : ", listess, "."
+  )
+} else {
+  Txt01 <- NULL
+}
+if (nrow(params$texte02) > 0) {
+  Tar <- unique(params$texte02$tarif)
+  Tar <- Tar[!is.na(Tar)]
+  Tab <- ListTarONF3[which(ListTarONF3$sibois %in% Tar), c("ess", "type_v", "contexte", "defvol", "dmin", "dmax", "hmin", "hmax", "entr1", "entr2", "sibois")]
+  Txt02 <- paste0(
+      Tab$sibois, " (", Tab$contexte, "), est un tarif pour les essences (", Tab$ess, "), pour les diamètres de ", Tab$dmin, " à ", Tab$dmax,
+      " cm, pour les hauteurs de ", Tab$hmin, " à ", Tab$hmax, " m,\n nécessite ", Tab$entr1, " et ", Tab$entr2, " et renvoi un ", Tab$defvol, " (", Tab$type_v, ").\n"
+    )
+} else {
+  Txt02 <- NULL
+}
+if (nrow(params$texte03) > 0) {
+  Txt <- ""
+  resv <- params$texte03
+  for (r in length(resv):1) {
+    Txt03 <- paste0(
+      "Pour l'essence ", names(resv[r]), ", l'estimation ONF cube ", round(100 * (resv[[r]]["L_VbftigCom", "sum"] / resv[[r]]["E_VbftigCom", "sum"] - 1), 0),
+      "% du volume bois fort tige commercial EMERGE et ", round(100 * (resv[[r]]["L_Vbftot7cm", "sum"] / resv[[r]]["E_Vbftot7cm", "sum"] - 1), 0),
+      "% du volume bois fort total EMERGE :\n- le volume bois fort tige commercial (L_VbftigCom) LOCAL de l'échantillon est de ", resv[[r]]["L_VbftigCom", "sum"],
+      " m3, le volume bois fort tige commercial (E_VbftigCom) EMERGE de l'échantillon est de ", resv[[r]]["E_VbftigCom", "sum"],
+      " m3,\n- le volume houppier (L_VHouppiers) LOCAL de l'échantillon est de ", resv[[r]]["L_VHouppiers", "sum"],
+      " m3, le volume houppier (E_VHouppiers) EMERGE de l'échantillon est de ",
+      round(resv[[r]]["E_Vbftot7cm", "sum"] - resv[[r]]["E_VbftigCom", "sum"], 2),
+      " m3,\n- soit un pourcentage de houppiers moyen LOCAL de l'échantillon (L_PHouppiers) de ",
+      round(100 * resv[[r]]["L_PHouppiers", "mean"], 0),
+      "%, et un pourcentage de houppiers moyen EMERGE de l'échantillon (E_PHouppiers) de ",
+      round(100 * resv[[r]]["E_PHouppiers", "mean"], 0), "%.\n", Txt
+    )
+  }
+} else {
+  Txt03 <- NULL
+}
+```
+
+`r Txt01`  
+`r Txt02`  
+
+```{r map01, fig.height=6, fig.width=10}
+params$map
+```
+
+`r Txt03`  
+
+```{r graphe01, fig.height=6, fig.width=10}
+params$graphe
+```
+
+```{r ttest, fig.height=6, fig.width=10}
+ltar <- c("numSchR","numSchL","numAlg")
+no <- ltar[as.integer(params$tarif)]
+t1 <- params$echant %>% filter(essence == params$espar & Type == no)
+t1$group <- "ECH" 
+t2 <- params$data %>% filter(essence == params$espar & Type == no)
+t2$group <- params$zonecalc
+res <- rquery.t.test(t1, t2)
+shapiro <- ifelse(res$test$p.value < 0.05, "la p-value est nettement inférieure au seuil de 5%, on ne peut pas rejeter l'hypothèse d'égalité des numéros de tarif.", "la p-value n'est pas nettement inférieure au seuil de 5%, on peut rejeter l'hypotèse d'égalité des numéros de tarif.")
+```
+
+`r res$shapiro`  
+
+La p-value est de `r  signif(res$test$p.value,3)` : `r shapiro`.  
+
+La mercuriale optimale est calculée à partir des éléments ci-dessus.
+```{r mercutop}
+pander(params$mercutop, caption="Mercuriale optimale.")
+```
+
+### Comparaison des résultats sur l'agence
+```{r graphe2, fig.height=6, fig.width=10}
+params$graphe2
+```

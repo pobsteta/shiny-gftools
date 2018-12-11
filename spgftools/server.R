@@ -763,9 +763,113 @@ function(input, output, session) {
       return(NULL)
     }
   })
+  
+  ## Rapport fiche
+  output$reportfiche <- downloadHandler(
+    filename = function() {
+      outNameFicheReport()
+    },
+    content = function(file) {
+      progress <- Progress$new(session, min = 1, max = 9)
+      on.exit(progress$close())
+      progress$set(
+        message = "Création du rapport fiche",
+        detail = "Ça prend du temps...", value = 1
+      )
+      # creer le rapport dans un repertoire temporaire avant de le télécharger
+      tempReport <- file.path(tempdir(), "fiche.Rmd")
+      file.copy("fiche.Rmd", tempReport, overwrite = TRUE)
+      progress$set(value = 2)
+      # on cree la carte ici pour éviter les messages dans le docx
+      cfrt <- polyfrt() %>%
+        st_centroid() %>%
+        st_coordinates()
+      cprf <- polyprf() %>%
+        st_centroid() %>%
+        st_coordinates()
+      map <- ggmap(get_googlemap(
+        center = c(lon = cfrt[1], lat = cfrt[2]),
+        zoom = 15, scale = 2, size = c(640, 640),
+        maptype ='satellite', messaging = FALSE),
+        language = "fr-FR") +
+        geom_sf(data = polyfrt(), aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
+        geom_sf(data = polyprf(), aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
+        scale_alpha_continuous(guide = F) +
+        geom_point(aes(x = cfrt[1], y = cfrt[2], stroke = 2), colour="green", data = frt, size = 1) +
+        geom_label_repel(aes(cfrt[1], cfrt[2], label = frt$ccod_frt), data=frt, family = 'Times',
+                         size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'green') +
+        geom_point(aes(x = cprf[1], y = cprf[2], stroke = 2), colour="red", data = prf, size = 1) +
+        geom_label_repel(aes(cprf[1], cprf[2], label = prf$ccod_prf), data=frt, family = 'Times',
+                         size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'red') +
+        theme(axis.text = element_blank())
+      progress$set(value = 3)
+      if (!is.null(input$reshot)) {
+        DF <- hot_to_r(input$reshot) %>%
+          rename(cdiam = Classe) %>%
+          mutate(
+            tarif = paste0(names(listetarif)[as.integer(input$tarif)], formatC(as.integer(input$numtarif), width = 2, flag = "0")),
+            hauteur = 0,
+            houppier = round(100 * E_PHouppiers / (100 + E_PHouppiers), 0)
+          )
+      } else if (!is.null(outRESHOT())) {
+        DF <- outRESHOT() %>%
+          rename(cdiam = Classe) %>%
+          mutate(
+            tarif = paste0(names(listetarif)[as.integer(input$tarif)], formatC(as.integer(input$numtarif), width = 2, flag = "0")),
+            hauteur = 0,
+            houppier = round(100 * E_PHouppiers / (100 + E_PHouppiers), 0)
+          )
+      }
+      mercutop <- DF[, c("cdiam", "tarif", "houppier")]
+      progress$set(value = 4)
+      # knit le document en passant les parametres params
+      isolate({
+        withCallingHandlers({
+          shinyjs::html(id = "text04", html = "Go ! Soyez très patient...")
+          # on prend les parametres en compte pour le rapport markdown
+          params <- list(
+            agence = input$agence,
+            exercice = input$exercice,
+            frt = polyfrt(),
+            prf = polyprf(),
+            echantillon = toupper(substr(input$datafile$name, 1, nchar(input$datafile$name) - 4)),
+            echant = echanttab3,
+            data = plotdata()$Tableau3,
+            espar = input$espar,
+            tarif = input$tarif,
+            graphe = plotgraphe(),
+            texte01 = Samnbtig(),
+            texte02 = Tartypvol(),
+            texte03 = gftools::describeBy(tabdata(), group = tabdata()$essence),
+            zonecalc = toupper(input$zonecalc),
+            mercutop = mercutop,
+            map = map,
+            graphe2 = g2
+          )
+          progress$set(value = 7)
+          # suppress warnings
+          storeWarn <- getOption("warn")
+          options(warn = -1)
+          rmarkdown::render(tempReport, output_file = file, params = params, envir = new.env(parent = globalenv()))
+          options(warn = storeWarn)
+          progress$set(value = 8)
+        },
+        message = function(m) {
+          shinyjs::html(id = "text04", html = m$message, add = TRUE)
+        }
+        )
+      })
+    }
+  )
+  
+  ## Nom du rapport fiche
+  outNameFicheReport <- reactive({
+    filename <- paste0("rapport_fiche_", input$agence, "_", toupper(substr(input$datafile$name, 1, nchar(input$datafile$name) - 4)), "_au_", format(Sys.Date(), "%Y%m%d"), ".docx")
+    return(filename)
+  })
 
-  ## Nom du rapport
-  outNameReport <- reactive({
+  ## Nom du rapport agence
+  outNameAgenceReport <- reactive({
     filename <- paste0("rapport_agence_", input$agence, "_", toupper(input$zonecalc), "_au_", format(Sys.Date(), "%Y%m%d"), ".pdf")
     return(filename)
   })
@@ -773,7 +877,7 @@ function(input, output, session) {
   ## Rapport agence
   output$reportagence <- downloadHandler(
     filename = function() {
-      outNameReport()
+      outNameAgenceReport()
     },
     content = function(file) {
       # creer le rapport dans un repertoire temporaire avant de le télécharger
@@ -1326,7 +1430,7 @@ function(input, output, session) {
     nbess <- unique(Samnbtig()$code)
     listess <- paste(nbess, collapse = ", ")
     Txt <- paste0(
-      " L'échantillon contient ", nbtig, " tiges désignées et ", length(nbess), " essences : ", listess, "."
+      " L'échantillon contient ", nbtig, " tige(s) désignée(s) et ", length(nbess), " essence(s) : ", listess, "."
     )
   })
 
@@ -1522,11 +1626,13 @@ function(input, output, session) {
       if (is.null(input$Essences03)) return(NULL)
       tab <- tablocalmercu()$Tableau2 %>%
         filter(essence %in% input$Essences03 & ut %in% input$ut)
-      ggplot(tab, aes(x = type, y = vol, group = type, fill = type, alpha = tarif)) +
+      g <- ggplot(tab, aes(x = type, y = vol, group = type, fill = type, alpha = tarif)) +
         scale_fill_manual(values = c("red", "darkgreen")) +
         geom_bar(stat = "identity", position = "stack") +
         facet_grid(ut ~ essence + classe) +
         scale_alpha_manual(values = c(1, 0.1))
+      g2 <<- g
+      g
     }
   })
 
@@ -1541,7 +1647,6 @@ function(input, output, session) {
       resv <- gftools::describeBy(tab, group = list(tab$essence, tab$ut))
       incProgress(1)
     })
-    print(resv)
     Txt <- paste0("- AGENCE ", input$agence, ", EXERCICE ", input$exercice, " -\n")
     for (r in length(colnames(resv)):1) {
       Txt <- paste0(Txt, "- UT ", colnames(resv)[r], " -\n")

@@ -194,14 +194,14 @@ filec <- loadData("SELECT * FROM cahierclausedt")
 #' @param agence
 #' @param exercice
 #' @param typzonecalc
-#' @param mercuriale 
-#' @param categorie 
+#' @param mercuriale
+#' @param categorie
 #'
 #' @return
 #' @export
 #'
 #' @examples
-BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "total", zonecalc = NULL, 
+BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "total", zonecalc = NULL,
                              clause = NULL, categorie = NULL,
                              essence = c("02", "09"), classearbremin = 20, classearbremax = 80,
                              barre = NULL, agence = 8415, exercice = 17, typzonecalc = "ser") {
@@ -231,7 +231,7 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       col_names = T
     )
   } else {
-    clo <- as_tibble(data.frame(ess = "Defaut", dmin = 10, dmax = 200, dec = 7, stringsAsFactors=FALSE))
+    clo <- as_tibble(data.frame(ess = "Defaut", dmin = 10, dmax = 200, dec = 7, stringsAsFactors = FALSE))
   }
   message("Extract categorie file...")
   if (!is.null(categorie)) {
@@ -242,12 +242,13 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       col_names = T
     )
   } else {
-    categorie <- data.frame(ess = rep(c("Feu", "Res"), times=1, each=6), 
-                      cat = rep(c("Sem", "Per","PB","BM","GB","TGB"), times=2), 
-                      dmin = c(0,10,20,30,50,70,0,10,20,30,45,65), 
-                      dmax = c(5,15,25,45,65,200,5,15,25,40,60,200),
-                      stringsAsFactors=FALSE
-    ) 
+    categorie <- data.frame(
+      ess = rep(c("Feu", "Res"), times = 1, each = 6),
+      cat = rep(c("Sem", "Per", "PB", "BM", "GB", "TGB"), times = 2),
+      dmin = c(0, 10, 20, 30, 50, 70, 0, 10, 20, 30, 45, 65),
+      dmax = c(5, 15, 25, 45, 65, 200, 5, 15, 25, 40, 60, 200),
+      stringsAsFactors = FALSE
+    )
   }
   message("Extract IFN data...")
   vecteur_annee <- c(2008:2016)
@@ -289,8 +290,10 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       dplyr::mutate(espar = as.character(espar)) %>%
       dplyr::left_join(gftools::code_ifn_onf, by = c(espar = "espar")) %>%
       dplyr::filter(!is.na(htot)) %>%
-      dplyr::mutate(esscct = ifelse(splitv(essence) %in% c("Hetre", "Chene", "Pin"), splitv(essence), fr),
-                    ess = ifelse(fr == "Autres feuillus", "Feu", "Res"))
+      dplyr::mutate(
+        esscct = ifelse(splitv(essence) %in% c("Hetre", "Chene", "Pin"), splitv(essence), fr),
+        ess = ifelse(fr == "Autres feuillus", "Feu", "Res")
+      )
     ## verifie si tab est vide = pas de data essence pour la region
     if (nrow(tab) == 0) {
       next
@@ -322,10 +325,10 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       tab4$dmin <- ifelse(is.na(tab4$dmin), clo[1, 2]$dmin)
       tab4$dmax <- ifelse(is.na(tab4$dmax), clo[1, 3]$dmax)
       tab4$dec <- ifelse(is.na(tab4$dec), clo[1, 4]$dec)
-    } 
+    }
     tab <- tab4 %>%
       dplyr::select(espar, essence, ess, diam, Classe, htot, hdec, decemerge, tarif, hauteur, houppier)
-    
+
     tab <- cbind(tab, E_VbftigCom = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "tige", dec = tab$decemerge))
     tab <- cbind(tab, E_Vbftot7cm = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "total", dec = 7)) %>%
       dplyr::mutate(E_PHouppiers = E_Vbftot7cm / E_VbftigCom - 1) %>%
@@ -349,9 +352,9 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
         numSchR = E_Vbftot7cm / 5 * 70000 / (diam - 5) / (diam - 10) - 8,
         numSchL = E_Vbftot7cm / 5 * 90000 / diam / (diam - 5) - 8,
         numAlg = E_Vbftot7cm * 28000000 / (310000 - 45200 * diam + 2390 * diam^2 - 2.9 * diam^3) - 8
-      ) 
+      )
     res <- tab %>%
-      dplyr::group_by(essence,cat) %>%
+      dplyr::group_by(essence, cat) %>%
       dplyr::summarise_at(c("numSchR", "numSchL", "numAlg"), funs(mean, var))
     res[, 6:8] <- round(res[, 6:8]^0.5 / res[, 3:5], 3)
     res[, 3:5] <- round(res[, 3:5], 3)
@@ -366,13 +369,13 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
         )
       ) %>%
       dplyr::select(essence, categorie, SR, SL, AL, SRcv, SLcv, ALcv, Best_tarif)
-    
+
     tab3 <- tab %>%
       dplyr::distinct(essence, Classe, cat) %>%
       group_by(Classe, essence, cat) %>%
       dplyr::right_join(tab2[, c("essence", "Best_tarif", "categorie")], by = c(essence = "essence", cat = "categorie")) %>%
       dplyr::ungroup()
-    
+
     tab4 <- tab3 %>%
       dplyr::mutate("Essence_Tar" = paste(tab3$essence, "Tar", sep = "_")) %>%
       dplyr::select(Essence_Tar, Classe, Best_tarif) %>%
@@ -538,4 +541,164 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
   }
   message("...Calculation realized!")
   return(listres)
+}
+
+
+#' rquery.t.test
+#'
+#' @param x : un vecteur non vide de valeurs
+#' @param y : un vecteur optionnel non vide de valeurs
+#' @param paired : si TRUE, le t-test indépendant est utilise
+#' @param graph : si TRUE, la distribution des donnees est représenté pour
+#' tester la normalite des donnees
+#' @param ... : plusieurs arguments qui sont passes a la fonction t.test() de R
+# 1. shapiro.test est utilise pour verifier la normalite
+# 2. F-test est utilise pour verifier les variances
+# Si les variances sont differentes alors le Welch t-test est utilise
+#'
+#' @return list
+#' @export
+#'
+#' @examples
+#' 
+rquery.t.test <- function(df1, df2 = NULL, paired = FALSE,
+                          graph = TRUE, ...) {
+  # I. Premier test : normalite et variance
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  var.equal <- FALSE # par defaut
+  x <- df1$Num
+  y <- df2$Num
+  nomx <- unique(df1$group)
+  nomy <- unique(df2$group)
+
+  # I.1 un jeu de donnee
+  if (is.null(y)) {
+    if (graph) par(mfrow = c(1, 2))
+    shapiro.px <- normaTest(x, graph,
+      hist.title = paste(nomx, "- Histogram"),
+      qq.title = paste(nomx, "- Normal Q-Q Plot")
+    )
+    if (shapiro.px < 0.05) {
+      shap <- paste(
+        nomx, "ne suit pas une distribution normale :",
+        "Shapiro-Wilk test p-value : ", shapiro.px,
+        ".\n Utilisez le test non-paramétrique de Wilcoxon."
+      )
+    } else {
+      shap <- paste(nomx, "suit une distribtuion normale.")
+    }
+  }
+
+  # I.2 deux jeux de donnees
+  if (!is.null(y)) {
+    if (!paired) { # I.2.a unpaired t test
+      if (graph) par(mfrow = c(2, 2))
+      # normality test
+      shapiro.px <- normaTest(x, graph,
+        hist.title = paste(nomx, "- Histogram"),
+        qq.title = paste(nomx, "- Normal Q-Q Plot")
+      )
+      shapiro.py <- normaTest(y, graph,
+        hist.title = paste(nomy, "- Histogram"),
+        qq.title = paste(nomy, "- Normal Q-Q Plot")
+      )
+      if (shapiro.px < 0.05 & shapiro.py < 0.05) {
+        shap <- paste(
+          nomx, "et", nomy, "ne suivent pas une distribution normale :",
+          " Shapiro test p-value : ", shapiro.px,
+          " (pour", nomx, ") et", shapiro.py, " (pour", nomy, ")",
+          ".\n Utilisez un test non paramétrique de type Wilcoxon."
+        )
+      } else if (shapiro.px < 0.05 & shapiro.py >= 0.05) {
+        shap <- paste(
+          nomx, "ne suit pas une distribution normale :",
+          "Shapiro-Wilk test p-value : ", shapiro.px,
+          ".\n Utilisez le test non-paramétrique de Wilcoxon."
+        )
+      } else if (shapiro.px >= 0.05 & shapiro.py < 0.05) {
+        shap <- paste(
+          nomy, "ne suit pas une distribution normale :",
+          "Shapiro-Wilk test p-value : ", shapiro.py,
+          ".\n Utilisez le test non-paramétrique de Wilcoxon."
+        )
+      } else {
+        shap <- paste(nomx, "et", nomy, "suivent une distribution normale.")
+      }
+    }
+    # Verifie l egalite des variances
+    if (var.test(x, y)$p.value >= 0.05) {
+      var.equal <- TRUE
+    }
+  } else { # I.2.b Paired t-test
+    if (graph) par(mfrow = c(1, 2))
+    d <- x - y
+    shapiro.pd <- normaTest(d, graph,
+      hist.title = paste(nomx, "~", nomy, "- Histogram"),
+      qq.title = paste(nomx, "~", nomy, "- Normal Q-Q Plot")
+    )
+    if (shapiro.pd < 0.05) {
+      shap <- paste(
+        "La différence", nomx, "~ ", nomy, "ne suit pas une distribution normale :",
+        " Shapiro-Wilk test p-value : ", shapiro.pd,
+        ".\n Utilisez un test non-paramétrique de type Wilcoxon."
+      )
+    } else {
+      shap <- paste(nomx, "et", nomy, "suivent une distribution normale.")
+    }
+  }
+
+  # II. Student's t-test
+  # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  res <- t.test(x, y, paired = paired, var.equal = var.equal, ...)
+  out <- list(shap, res)
+  names(out) <- c("shapiro", "test")
+  return(out)
+}
+
+#' normaTest
+#'
+#' @param x : un jeu de donnees non vide
+#' @param graph : les valeurs possibles sont TRUE ou FALSE. Si TRUE,
+#  l histogramme et le Q-Q plot des donnes sont affcihes
+#' @param hist.title  : titre de l histogram
+#' @param qq.title : titre du Q-Q plot
+#' @param ...
+#'
+#' @return
+#' @export
+#'
+#' @examples
+#' 
+normaTest <- function(x, graph = TRUE,
+                      hist.title = "Histogramme",
+                      qq.title = "Normal Q-Q Plot", ...) {
+  # Significance test
+  #++++++++++++++++++++++
+  shapiro.p <- signif(shapiro.test(x)$p.value, 1)
+
+  if (graph) {
+    # Plot : Visual inspection
+    #++++++++++++++++
+    h <- hist(x,
+      col = "lightblue", main = hist.title,
+      xlab = "Numéro de tarif", ...
+    )
+    m <- round(mean(x), 1)
+    s <- round(sd(x), 1)
+    mtext(paste0("Moy : ", m, " - SD : ", s),
+      side = 3, cex = 0.8
+    )
+    # add normal curve
+    xfit <- seq(min(x), max(x), length = 40)
+    yfit <- dnorm(xfit, mean = mean(x), sd = sd(x))
+    yfit <- yfit * diff(h$mids[1:2]) * length(x)
+    lines(xfit, yfit, col = "red", lwd = 2)
+    # qq plot
+    qqnorm(x, pch = 19, frame.plot = FALSE, main = qq.title)
+    qqline(x)
+    mtext(paste0("Shapiro-Wilk, p-val : ", shapiro.p),
+      side = 3, cex = 0.8
+    )
+  }
+  return(shapiro.p)
 }

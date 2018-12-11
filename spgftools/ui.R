@@ -157,9 +157,13 @@ fluidPage(
             selectInput("agence", "Agence :", c(Choisir = ""))
           ),
           conditionalPanel(
+            'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence',
+            actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary")
+          ),
+          conditionalPanel(
             'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence && input.mappoint',
             downloadButton(
-              "reportfiche", "Fiche échantillon résultat (pdf)",
+              "reportfiche", "Fiche échantillon résultat (docx)",
               class = "btn btn-primary"
             )),
           conditionalPanel(
@@ -167,11 +171,7 @@ fluidPage(
               downloadButton(
                 "reportagence", "Rapport Agence/Région IFN (pdf)",
                 class = "btn btn-primary"
-            )),
-          conditionalPanel(
-            'input.inTabset02 == "Data/Mercuriale/Clause" && input.agence',
-            actionButton("update022", "Comparaison des résultats >>>", icon("refresh"), class = "btn btn-primary")
-          )
+            ))
         ),
         conditionalPanel(
           condition = 'input.inTabset02 == "Resultat"',
@@ -534,14 +534,14 @@ fluidPage(
           )
         )
       )
-    ),
-    absolutePanel(
-      bottom = 10,
-      left = 10,
-      draggable = F,
-      width = "100%",
-      height = "auto",
-      p(a(icon("github fa-2x"), href = "https://github.com/pobsteta/shinyproxy-gftools#boards?repos=116554829", target = "_blank"))
     )
+    # absolutePanel(
+    #   bottom = 10,
+    #   left = 10,
+    #   draggable = F,
+    #   width = "100%",
+    #   height = "auto",
+    #   p(a(icon("github fa-2x"), href = "https://github.com/pobsteta/shiny-gftools/issues", target = "_blank"))
+    # )
   )
 )

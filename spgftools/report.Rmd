@@ -21,6 +21,7 @@ params:
 
 ```{r global, echo=FALSE}
 library(xtable)
+library(knitr)
 ```
 
 
@@ -45,15 +46,17 @@ Les pourcentages exprimés le sont toujours par rapport au volume EMERGE (E) est
 Les essences Chêne sessile (IFN) et Chêne pédonculé (IFN) sont comparés à CHX, CHP et CHS regroupés (ONF). Le Sapin pectiné (IFN) est comapré à S.P et SAP regroupé (ONF).
 
 ```{r echo=FALSE, warning=FALSE, results='tabrecap'}
-df <- bres[[1]]$Tableau2[,c(1,2,9)]
-for (reg in 2:length(unique(params$shape["code"]$code))) {
+dt <- gftools::getData("IFNCODE") %>% filter(donnee %in% "ESPAR") %>% filter(code %in% params$essence)
+df <- data.frame(ess = rep(dt$libelle, times=1, each=length(unique(params$res[[1]]$Tableau2$categorie))), 
+                  cat = rep(unique(params$res[[1]]$Tableau2$categorie), times=length(params$essence)))
+names(df) <- c("essence", "categorie")
+for (reg in 1:length(unique(params$shape["code"]$code))) {
   # df <- cbind(df, bres[[reg]]$Tableau2[,c(9)])
   df <- df %>%
-    right_join(params$res[[reg]]$Tableau2[,c(1,2,9)], by=c(essence="essence", categorie="categorie"))
+    left_join(params$res[[reg]]$Tableau2[,c(1,2,9)], by=c(essence="essence", categorie="categorie"))
 }
-names(df) <- c("essence", "categorie", unique(params$shape["code"]$code))
-cat("\\newpage ")
-print(xtable(df, caption = "Meilleur tarif par région", comment = FALSE, scalebox = 1, include.rownames = FALSE))
+names(df) <- c("Essence", "Catégorie", unique(params$shape["code"]$code))
+knitr::kable(df, caption = paste("Meilleur tarif par région", toupper(params$typzonecalc)))
 ```
 
 
