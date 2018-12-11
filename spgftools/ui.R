@@ -327,10 +327,12 @@ fluidPage(
             fluidRow(
               column(
                 2,
+                h5("Données échantillon :"),
                 rHandsontableOutput("datahot")
               ),
               column(
                 2,
+                h5("Mercuriale échantillon :"),
                 rHandsontableOutput("mercuhot")
               ),
               column(
@@ -351,7 +353,8 @@ fluidPage(
                   class = "btn btn-primary"
                 )),
                 h5("Cahier des clauses territoriales :"),
-                rHandsontableOutput("clausehot")
+                rHandsontableOutput("clausehot"),
+                conditionalPanel("input.parcelle", verbatimTextOutput("text05"))
               ),
               column(
                 2,

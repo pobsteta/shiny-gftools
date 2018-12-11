@@ -561,6 +561,16 @@ function(input, output, session) {
       filter(grepl(input$agence, ccod_cact))
     pst$ccod_ut
   })
+  
+  outUT <- reactive({
+    ut <- parcelledata %>%
+      filter(ccod_frt == input$forest, ccod_cact == input$agence, ccod_prf == input$parcelle)
+    ut$ccod_pst
+  })
+  
+  output$text05 <- renderPrint({
+    return(paste("Poste de l'échantillon :", outUT()))
+  })
 
   output$pst <- renderUI({
     selectizeInput("pst", NULL,
@@ -778,7 +788,9 @@ function(input, output, session) {
       )
       # creer le rapport dans un repertoire temporaire avant de le télécharger
       tempReport <- file.path(tempdir(), "fiche.Rmd")
+      styleReport <- file.path(tempdir(), "mystyles.docx")
       file.copy("fiche.Rmd", tempReport, overwrite = TRUE)
+      file.copy("mystyles.docx", styleReport, overwrite = TRUE)
       progress$set(value = 2)
       # on cree la carte ici pour éviter les messages dans le docx
       cfrt <- polyfrt() %>%
@@ -787,11 +799,11 @@ function(input, output, session) {
       cprf <- polyprf() %>%
         st_centroid() %>%
         st_coordinates()
-      map <- ggmap(get_googlemap(
+      map01 <- ggmap(get_googlemap(
         center = c(lon = cfrt[1], lat = cfrt[2]),
         zoom = 15, scale = 2, size = c(640, 640),
         maptype ='satellite', messaging = FALSE),
-        language = "fr-FR") +
+        language = "fr-FR", extent = "device") +
         geom_sf(data = polyfrt(), aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
         geom_sf(data = polyprf(), aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
         scale_alpha_continuous(guide = F) +
@@ -801,6 +813,15 @@ function(input, output, session) {
         geom_point(aes(x = cprf[1], y = cprf[2], stroke = 2), colour="red", data = prf, size = 1) +
         geom_label_repel(aes(cprf[1], cprf[2], label = prf$ccod_prf), data=frt, family = 'Times',
                          size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'red') +
+        theme(axis.text = element_blank())
+      map02 <- ggmap(get_googlemap(
+        center = c(lon = cfrt[1], lat = cfrt[2]),
+        zoom = 14, scale = 2, size = c(640, 640),
+        maptype ='terrain', messaging = FALSE),
+        language = "fr-FR", extent = "device") +
+        geom_sf(data = polyfrt(), aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
+        geom_sf(data = polyprf(), aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
+        scale_alpha_continuous(guide = F) +
         theme(axis.text = element_blank())
       progress$set(value = 3)
       if (!is.null(input$reshot)) {
@@ -821,6 +842,8 @@ function(input, output, session) {
           )
       }
       mercutop <- DF[, c("cdiam", "tarif", "houppier")]
+      tab <- tablocalmercu()$Tableau1 %>%
+        filter(essence %in% input$Essences03 & ut %in% input$ut)
       progress$set(value = 4)
       # knit le document en passant les parametres params
       isolate({
@@ -841,9 +864,11 @@ function(input, output, session) {
             texte01 = Samnbtig(),
             texte02 = Tartypvol(),
             texte03 = gftools::describeBy(tabdata(), group = tabdata()$essence),
+            texte04 = gftools::describeBy(tab, group = list(tab$essence, tab$ut)),
             zonecalc = toupper(input$zonecalc),
             mercutop = mercutop,
-            map = map,
+            map01 = map01,
+            map02 = map02,
             graphe2 = g2
           )
           progress$set(value = 7)
@@ -1677,7 +1702,7 @@ function(input, output, session) {
     if (input$update022 == 0) return(NULL)
     items <- unique(tablocalmercu()$Tableau1$ut)
     names(items) <- items
-    selectInput("ut", " ", multiple = TRUE, items, selected = c("Toutes"))
+    selectInput("ut", " ", multiple = TRUE, items, selected = c(outUT()))
   })
 
   ########## Onglet 03 ##############################################

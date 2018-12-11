@@ -29,6 +29,7 @@ library(dplyr)
 library(xtable)
 library(sf)
 library(yarrr)
+library(grid)
 
 options(pgsql = list(
   "host" = "0.0.0.0",
@@ -172,7 +173,7 @@ insertData <- function(table, df) {
 dtdata <- BDDQueryONF(query = "SELECT id, iidtn_dt, llib_dt, geom FROM dt ORDER BY iidtn_dt")
 agencedata <- BDDQueryONF(query = "SELECT id, iidtn_agc, llib_agc, geom FROM agence ORDER BY iidtn_agc")
 forestdata <- BDDQueryONF(query = "SELECT id, ccod_cact, ccod_frt, llib2_frt, geom FROM forest ORDER BY ccod_frt")
-parcelledata <- BDDQueryONF(query = "SELECT id, ccod_cact, ccod_frt, llib_frt, ccod_prf, geom FROM parcelle ORDER BY iidtn_prf")
+parcelledata <- BDDQueryONF(query = "SELECT id, ccod_cact, ccod_frt, llib_frt, ccod_prf, ccod_pst, geom FROM parcelle ORDER BY iidtn_prf")
 pstdata <- BDDQueryONF(query = "SELECT ccod_cact, ccod_ut, clib_pst, geom FROM pst ORDER BY ccod_ut")
 files <- loadData("SELECT s.id AS id, d.iidtn_dt AS dt, a.iidtn_agc AS agence, f.ccod_frt AS forest, p.ccod_prf AS parcelle 
                   FROM sample s, dt d, agence a, forest f, parcelle p 
@@ -701,4 +702,39 @@ normaTest <- function(x, graph = TRUE,
     )
   }
   return(shapiro.p)
+}
+
+#' multiplot
+#'
+#' @param ... 
+#' @param plotlist 
+#' @param cols 
+#'
+#' @return
+#' @export
+#'
+#' @examples
+multiplot <- function(..., plotlist=NULL, cols) {
+  # Make a list from the ... arguments and plotlist
+  plots <- c(list(...), plotlist)
+  
+  numPlots = length(plots)
+  
+  # Make the panel
+  plotCols = cols                          # Number of columns of plots
+  plotRows = ceiling(numPlots/plotCols) # Number of rows needed, calculated from # of cols
+  
+  # Set up the page
+  grid.newpage()
+  pushViewport(viewport(layout = grid.layout(plotRows, plotCols)))
+  vplayout <- function(x, y)
+    viewport(layout.pos.row = x, layout.pos.col = y)
+  
+  # Make each plot, in the correct location
+  for (i in 1:numPlots) {
+    curRow = ceiling(i/plotCols)
+    curCol = (i-1) %% plotCols + 1
+    print(plots[[i]], vp = vplayout(curRow, curCol ))
+  }
+  
 }

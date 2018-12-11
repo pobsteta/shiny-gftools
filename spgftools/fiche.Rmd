@@ -17,9 +17,11 @@ params:
   texte01 : NULL
   texte02 : NULL
   texte03 : NULL
+  texte04 : NULL
   zonecalc : NA
   mercutop : NA
-  map : NA
+  map01 : NA
+  map02 : NA
   graphe2 : NA
 ---
 
@@ -76,16 +78,37 @@ if (nrow(params$texte03) > 0) {
 } else {
   Txt03 <- NULL
 }
+if (nrow(params$texte04) > 0) {
+  resv <- params$texte04
+  Txt04 <- paste0("AGENCE ", params$agence, ", EXERCICE ", params$exercice)
+    for (r in length(colnames(resv)):1) {
+      Txt04 <- paste0(Txt04, "- UT ", colnames(resv)[r], " - ")
+      for (s in length(rownames(resv)):1) {
+        Txt04 <- paste0(
+          Txt04,
+          "Pour l'essence ", rownames(resv)[s], " : l'estimation LOCAL cube ", round(100 * ((resv[[s, r]]["tl_vbftigcom", "sum"] + resv[[s, r]]["tl_vhouppiers", "sum"]) / (resv[[s, r]]["te_vbftigcom", "sum"] + resv[[s, r]]["te_vhouppiers", "sum"]) - 1), 0),
+          "% du volume bois fort total decoupe 7cm EMERCU, ", round(100 * (resv[[s, r]]["tl_vbftigcom", "sum"] / resv[[s, r]]["te_vbftigcom", "sum"] - 1), 0),
+          "% du volume bois fort tige EMERCU et ", round(100 * (resv[[s, r]]["tl_vhouppiers", "sum"] / resv[[s, r]]["te_vhouppiers", "sum"] - 1), 0),
+          "% du volume houppiers EMERCU : le volume bois fort tige commercial LOCAL est de ", round(resv[[s, r]]["tl_vbftigcom", "sum"], 0),
+          " m3, le volume bois fort tige commercial EMERCU est de ", round(resv[[s, r]]["te_vbftigcom", "sum"], 0),
+          " m3, le volume houppier LOCAL est de ", round(resv[[s, r]]["tl_vhouppiers", "sum"], 0),
+          " m3, le volume houppier EMERCU est de ", round(resv[[s, r]]["te_vhouppiers", "sum"], 0), " m3.\n"
+        )
+      }
+    }
+} else {
+  Txt04 <- NULL
+}
 ```
 
 `r Txt01`  
-`r Txt02`  
+`r Txt02`
 
 ```{r map01, fig.height=6, fig.width=10}
-params$map
+multiplot(params$map02, params$map01, cols = 2)
 ```
 
-`r Txt03`  
+`r Txt03`
 
 ```{r graphe01, fig.height=6, fig.width=10}
 params$graphe
@@ -112,6 +135,8 @@ pander(params$mercutop, caption="Mercuriale optimale.")
 ```
 
 ### Comparaison des résultats sur l'agence
-```{r graphe2, fig.height=6, fig.width=10}
+```{r graphe2, fig.height=4, fig.width=10}
 params$graphe2
 ```
+
+`r Txt04`
