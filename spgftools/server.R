@@ -784,7 +784,7 @@ function(input, output, session) {
       tempReport <- file.path(tempdir(), "fiche.Rmd")
       styleReport <- file.path(tempdir(), "mystyles.docx")
       file.copy("fiche.Rmd", tempReport, overwrite = TRUE)
-      file.copy("mystyles02.docx", styleReport, overwrite = TRUE)
+      file.copy("mystyles.docx", styleReport, overwrite = TRUE)
       progress$set(value = 2)
       # on cree la carte ici pour éviter les messages dans le docx
       frt <- polyfrt()
@@ -1065,7 +1065,7 @@ function(input, output, session) {
   polyfrt <- reactive({
     if (input$forest != " ") {
       polyfrt <- forestdata %>%
-        filter(ccod_frt == input$forest)
+        filter(ccod_frt == input$forest, ccod_cact == input$agence)
     } else {
       polyfrt <- forestdata %>%
         filter(id == 0)
@@ -1089,7 +1089,7 @@ function(input, output, session) {
   polyprf <- reactive({
     if (input$parcelle != " " && input$forest != " "){
       polyprf <- parcelledata %>%
-        filter(ccod_prf == input$parcelle, ccod_frt == input$forest)
+        filter(ccod_prf == input$parcelle, ccod_frt == input$forest, ccod_cact == input$agence)
     } else {
       polyprf <- parcelledata %>%
         filter(id == 0)

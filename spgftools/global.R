@@ -32,7 +32,7 @@ library(yarrr)
 library(grid)
 
 ## API google
-ggmap::register_google(key = "AIzaSyDLndcZXfm7K9X1n8Qzb3vd_ZUuSq7qvK8")
+
 
 ## acces base de donnees
 options(pgsql = list(

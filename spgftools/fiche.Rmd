@@ -3,8 +3,6 @@ title: "Fiche récapitulative de l'échantillon mesuré"
 output: 
   word_document:
     reference_docx: mystyles.docx
-    toc: yes
-    toc_depth: 3
 params:
   agence : NA
   exercice : NA
@@ -73,14 +71,14 @@ if (nrow(params$texte03) > 0) {
   resv <- params$texte03
   for (r in length(resv):1) {
     Txt03 <- paste0(
-      "Pour l'essence ", names(resv[r]), ", l'estimation ONF cube ", round(100 * (resv[[r]]["L_VbftigCom", "sum"] / resv[[r]]["E_VbftigCom", "sum"] - 1), 0),
+      "- Pour l'essence ", names(resv[r]), ", l'estimation ONF cube ", round(100 * (resv[[r]]["L_VbftigCom", "sum"] / resv[[r]]["E_VbftigCom", "sum"] - 1), 0),
       "% du volume bois fort tige commercial EMERGE et ", round(100 * (resv[[r]]["L_Vbftot7cm", "sum"] / resv[[r]]["E_Vbftot7cm", "sum"] - 1), 0),
-      "% du volume bois fort total EMERGE :\n- le volume bois fort tige commercial (L_VbftigCom) LOCAL de l'échantillon est de ", resv[[r]]["L_VbftigCom", "sum"],
+      "% du volume bois fort total EMERGE : le volume bois fort tige commercial (L_VbftigCom) LOCAL de l'échantillon est de ", resv[[r]]["L_VbftigCom", "sum"],
       " m3, le volume bois fort tige commercial (E_VbftigCom) EMERGE de l'échantillon est de ", resv[[r]]["E_VbftigCom", "sum"],
-      " m3,\n- le volume houppier (L_VHouppiers) LOCAL de l'échantillon est de ", resv[[r]]["L_VHouppiers", "sum"],
+      " m3, le volume houppier (L_VHouppiers) LOCAL de l'échantillon est de ", resv[[r]]["L_VHouppiers", "sum"],
       " m3, le volume houppier (E_VHouppiers) EMERGE de l'échantillon est de ",
       round(resv[[r]]["E_Vbftot7cm", "sum"] - resv[[r]]["E_VbftigCom", "sum"], 2),
-      " m3,\n- soit un pourcentage de houppiers moyen LOCAL de l'échantillon (L_PHouppiers) de ",
+      " m3, soit un pourcentage de houppiers moyen LOCAL de l'échantillon (L_PHouppiers) de ",
       round(100 * resv[[r]]["L_PHouppiers", "mean"], 0),
       "%, et un pourcentage de houppiers moyen EMERGE de l'échantillon (E_PHouppiers) de ",
       round(100 * resv[[r]]["E_PHouppiers", "mean"], 0), "%.\n", Txt03
@@ -158,7 +156,7 @@ La p-value est de `r  signif(res$test$p.value,3)` : `r shapiro`.
 La mercuriale optimale est calculée à partir des éléments ci-dessus.
 ```{r mercutop}
 mercu <- tbls(name = "mercu", caption = "Mercuriale optimale calculée à partir des données zone (SER, RF250 ou RN250).")
-pander(params$mercutop, caption=mercu)
+pander(params$mercutop, caption=mercu, justify='center')
 ```
 
 ## Application de la mercuriale optimale sur l'état d'assiette agence
