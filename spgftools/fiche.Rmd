@@ -1,8 +1,10 @@
 ---
-title: "Fiche"
+title: "Fiche récapitulative de l'échantillon mesuré"
 output: 
   word_document:
     reference_docx: mystyles.docx
+    toc: yes
+    toc_depth: 3
 params:
   agence : NA
   exercice : NA
@@ -22,18 +24,27 @@ params:
   mercutop : NA
   map01 : NA
   map02 : NA
+  graphe1 : NA
   graphe2 : NA
 ---
 
 ```{r setup, include=FALSE}
 library(pander)
+panderOptions('table.alignment.default', function(df)
+    ifelse(sapply(df, is.numeric), 'right', 'left'))
+panderOptions('table.split.table', Inf)
+panderOptions('big.mark', ",")
+panderOptions('keep.trailing.zeros', TRUE)
 library(knitr)
 knitr::opts_chunk$set(echo = FALSE)
+library(captioner)
+figs <- captioner(prefix="Figure")
+tbls <- captioner(prefix="Table")
 ```
 
 **Échantillon - `r params$echantillon`**  
-Forêt : `r params$prf$llib_frt`  
-Parcelle : `r params$prf$ccod_prf`
+Forêt : `r params$frt`  
+Parcelle : `r params$prf`  
 
 ```{r textes}
 if (nrow(params$texte01) > 0) {
@@ -58,7 +69,7 @@ if (nrow(params$texte02) > 0) {
   Txt02 <- NULL
 }
 if (nrow(params$texte03) > 0) {
-  Txt <- ""
+  Txt03 <- ""
   resv <- params$texte03
   for (r in length(resv):1) {
     Txt03 <- paste0(
@@ -72,7 +83,7 @@ if (nrow(params$texte03) > 0) {
       " m3,\n- soit un pourcentage de houppiers moyen LOCAL de l'échantillon (L_PHouppiers) de ",
       round(100 * resv[[r]]["L_PHouppiers", "mean"], 0),
       "%, et un pourcentage de houppiers moyen EMERGE de l'échantillon (E_PHouppiers) de ",
-      round(100 * resv[[r]]["E_PHouppiers", "mean"], 0), "%.\n", Txt
+      round(100 * resv[[r]]["E_PHouppiers", "mean"], 0), "%.\n", Txt03
     )
   }
 } else {
@@ -101,20 +112,35 @@ if (nrow(params$texte04) > 0) {
 }
 ```
 
-`r Txt01`  
-`r Txt02`
+## Plan de situation
 
-```{r map01, fig.height=6, fig.width=10}
+```{r map12, fig.height=6, fig.width=10, fig.cap=map12}
+map12 <- figs(name = "map12", caption = "Plan de situation.")
 multiplot(params$map02, params$map01, cols = 2)
 ```
 
-`r Txt03`
+## En bref...
 
-```{r graphe01, fig.height=6, fig.width=10}
+`r Txt01`  
+`r Txt02`  
+
+## Répartition des volumes dans la tige
+```{r graphe1, fig.height=6, fig.width=10, fig.cap=graphe1}
+graphe1 <- figs(name = "graphe1", caption = "Répartition des volumes dans la tige par classe diamètre et par essence.")
+params$graphe1
+```
+
+`r Txt03`  
+
+## Comparaison des données échantillon (ECH) et zones (SER, RN250 ou RF250)
+```{r graphe, fig.height=5.5, fig.width=10, fig.cap=graphe}
+graphe <- figs(name = "graphe", caption = "Boxplot de comparaison des données échantillon (ECH) et zones (SER, RN250 ou RF250).")
 params$graphe
 ```
 
-```{r ttest, fig.height=6, fig.width=10}
+## Les échantillons (ECH) et et zones (SER, RN250 ou RF250) sont-ils différents ?
+```{r shapiro, fig.height=5.5, fig.width=10, fig.cap=shap}
+shap <- figs(name = "shap", caption = "Graphes Q-Q Plot et fréquence des données des échantillons.")
 ltar <- c("numSchR","numSchL","numAlg")
 no <- ltar[as.integer(params$tarif)]
 t1 <- params$echant %>% filter(essence == params$espar & Type == no)
@@ -131,11 +157,14 @@ La p-value est de `r  signif(res$test$p.value,3)` : `r shapiro`.
 
 La mercuriale optimale est calculée à partir des éléments ci-dessus.
 ```{r mercutop}
-pander(params$mercutop, caption="Mercuriale optimale.")
+mercu <- tbls(name = "mercu", caption = "Mercuriale optimale calculée à partir des données zone (SER, RF250 ou RN250).")
+pander(params$mercutop, caption=mercu)
 ```
 
-### Comparaison des résultats sur l'agence
-```{r graphe2, fig.height=4, fig.width=10}
+## Application de la mercuriale optimale sur l'état d'assiette agence
+
+```{r graphe2, fig.height=4, fig.width=10, fig.cap=graphe2}
+graphe2 <- figs(name = "graphe2", caption = "Graphe de comparaison des volumes de l'état d'assiette calculés à partir de la mercuriale optimale.")
 params$graphe2
 ```
 

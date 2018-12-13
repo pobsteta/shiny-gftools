@@ -31,6 +31,10 @@ library(sf)
 library(yarrr)
 library(grid)
 
+## API google
+ggmap::register_google(key = "AIzaSyDLndcZXfm7K9X1n8Qzb3vd_ZUuSq7qvK8")
+
+## acces base de donnees
 options(pgsql = list(
   "host" = "0.0.0.0",
   "port" = 35432,
@@ -41,6 +45,7 @@ options(pgsql = list(
   "dbname" = "tryton"
 ))
 
+## creation du pool de connexion
 pool <- dbPool(
   drv = "PostgreSQL",
   port = options()$pgsql$port,

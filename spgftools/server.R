@@ -292,6 +292,7 @@ function(input, output, session) {
             echant <<- p$Tableau5
             echanttab3 <<- p$Tableau3
             echanttab4 <<- p$Tableau4
+            echantg <<- p$Graphe6
           }
         },
         message = function(m) {
@@ -563,6 +564,7 @@ function(input, output, session) {
   })
   
   outUT <- reactive({
+    if (input$forest == " " || input$parcelle == " ") return("Toutes")
     ut <- parcelledata %>%
       filter(ccod_frt == input$forest, ccod_cact == input$agence, ccod_prf == input$parcelle)
     ut$ccod_pst
@@ -621,14 +623,6 @@ function(input, output, session) {
     } else {
       return(NULL)
     }
-  })
-
-  # observeEvent(input$parcelle, {
-  #   updateSelectInput(session, "listedata", choices = c('Choisir DATA' = '', outDATA()))
-  # })
-
-  observeEvent(input$agence, {
-    updateSelectInput(session, "listeclause", choices = c("Choisir CCT" = "", outCCT()))
   })
 
   observeEvent(input$listedata, {
@@ -790,39 +784,83 @@ function(input, output, session) {
       tempReport <- file.path(tempdir(), "fiche.Rmd")
       styleReport <- file.path(tempdir(), "mystyles.docx")
       file.copy("fiche.Rmd", tempReport, overwrite = TRUE)
-      file.copy("mystyles.docx", styleReport, overwrite = TRUE)
+      file.copy("mystyles02.docx", styleReport, overwrite = TRUE)
       progress$set(value = 2)
       # on cree la carte ici pour éviter les messages dans le docx
-      cfrt <- polyfrt() %>%
+      frt <- polyfrt()
+      prf <- polyprf()
+      poi <- st_point(x = c(input$longitude, input$latitude), dim = "XY") %>% st_sfc(crs = 4326)
+
+      cpoi <- poi %>%
         st_centroid() %>%
         st_coordinates()
-      cprf <- polyprf() %>%
+      poib <- poi %>%
+        st_transform(2154) %>%
+        st_buffer(dist = 10) %>%
+        st_transform(4326) %>%
+        fortify()
+
+      if (input$forest == " ") {
+        frt1 <- poib
+        frt <- frt1[[1]] %>%
+          fortify()
+        nomfrt <- "POI"
+      } else {
+        nomfrt <- frt$llib2_frt
+      }
+
+      if (input$parcelle == " ") {
+        prf1 <- poib
+        prf <- prf1[[1]] %>%
+          fortify()
+        nomprf <- "POI"
+      } else {
+        nomprf <- prf$ccod_prf
+      }
+
+      cfrt <- frt %>%
         st_centroid() %>%
         st_coordinates()
-      map01 <- ggmap(get_googlemap(
-        center = c(lon = cfrt[1], lat = cfrt[2]),
-        zoom = 15, scale = 2, size = c(640, 640),
-        maptype ='satellite', messaging = FALSE),
-        language = "fr-FR", extent = "device") +
-        geom_sf(data = polyfrt(), aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
-        geom_sf(data = polyprf(), aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
-        scale_alpha_continuous(guide = F) +
-        geom_point(aes(x = cfrt[1], y = cfrt[2], stroke = 2), colour="green", data = frt, size = 1) +
-        geom_label_repel(aes(cfrt[1], cfrt[2], label = frt$ccod_frt), data=frt, family = 'Times',
-                         size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'green') +
-        geom_point(aes(x = cprf[1], y = cprf[2], stroke = 2), colour="red", data = prf, size = 1) +
-        geom_label_repel(aes(cprf[1], cprf[2], label = prf$ccod_prf), data=frt, family = 'Times',
-                         size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'red') +
-        theme(axis.text = element_blank())
-      map02 <- ggmap(get_googlemap(
-        center = c(lon = cfrt[1], lat = cfrt[2]),
-        zoom = 14, scale = 2, size = c(640, 640),
-        maptype ='terrain', messaging = FALSE),
-        language = "fr-FR", extent = "device") +
-        geom_sf(data = polyfrt(), aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
-        geom_sf(data = polyprf(), aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
-        scale_alpha_continuous(guide = F) +
-        theme(axis.text = element_blank())
+      cprf <- prf %>%
+        st_centroid() %>%
+        st_coordinates()
+
+      if (nomfrt == "POI" | nomprf == "POI") {
+        map01 <- ggmap(get_googlemap(
+          center = c(lon = cpoi[1], lat = cpoi[2]),
+          zoom = 15, scale = 2, size = c(640, 640), maptype ='satellite', messaging = FALSE), language = "fr-FR", extent="device") +
+          geom_sf(data = frt, aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
+          geom_sf(data = prf, aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
+          scale_alpha_continuous(guide = F) +
+          theme(axis.text = element_blank())
+        map02 <- ggmap(get_googlemap(
+          center = c(lon = cpoi[1], lat = cfrt[2]),
+          zoom = 14, scale = 2, size = c(640, 640), maptype ='terrain', messaging = FALSE), language = "fr-FR", extent="device") +
+          scale_alpha_continuous(guide = F)  +
+          theme(axis.text = element_blank()) 
+      } else {
+        map01 <- ggmap(get_googlemap(
+          center = c(lon = cfrt[1], lat = cfrt[2]),
+          zoom = 15, scale = 2, size = c(640, 640), maptype ='satellite', messaging = FALSE), language = "fr-FR", extent="device") +
+          geom_sf(data = frt, aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
+          geom_sf(data = prf, aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
+          scale_alpha_continuous(guide = F) +
+          geom_point(aes(x = cfrt[1], y = cfrt[2]), stroke = 2, colour="green", data = frt, size =1) +
+          geom_label_repel(aes(x= cfrt[1], y = cfrt[2], label = frt$ccod_frt), data = frt, family = 'Times', 
+                           size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'green') +
+          geom_point(aes(x = cprf[1], y = cprf[2]), stroke = 2, colour="red", data = prf, size =1) +
+          geom_label_repel(aes(x = cprf[1], y = cprf[2], label = prf$ccod_prf), data = prf, family = 'Times',
+                           size = 4, box.padding = 0.2, point.padding = 0.3, segment.color = 'red') +
+          theme(axis.text = element_blank()) 
+        map02 <- ggmap(get_googlemap(
+          center = c(lon = cfrt[1], lat = cfrt[2]),
+          zoom = 14, scale = 2, size = c(640, 640), maptype ='terrain', messaging = FALSE), language = "fr-FR", extent="device") +
+          geom_sf(data = frt, aes(alpha=0.9), color = "green", inherit.aes = FALSE) +
+          geom_sf(data = prf, aes(alpha=0.9), color = "red", inherit.aes = FALSE) +
+          scale_alpha_continuous(guide = F)  +
+          theme(axis.text = element_blank()) 
+      }
+      
       progress$set(value = 3)
       if (!is.null(input$reshot)) {
         DF <- hot_to_r(input$reshot) %>%
@@ -853,8 +891,8 @@ function(input, output, session) {
           params <- list(
             agence = input$agence,
             exercice = input$exercice,
-            frt = polyfrt(),
-            prf = polyprf(),
+            frt = nomfrt,
+            prf = nomprf,
             echantillon = toupper(substr(input$datafile$name, 1, nchar(input$datafile$name) - 4)),
             echant = echanttab3,
             data = plotdata()$Tableau3,
@@ -863,12 +901,13 @@ function(input, output, session) {
             graphe = plotgraphe(),
             texte01 = Samnbtig(),
             texte02 = Tartypvol(),
-            texte03 = gftools::describeBy(tabdata(), group = tabdata()$essence),
+            texte03 = echanttab1,
             texte04 = gftools::describeBy(tab, group = list(tab$essence, tab$ut)),
             zonecalc = toupper(input$zonecalc),
             mercutop = mercutop,
             map01 = map01,
             map02 = map02,
+            graphe1 = echantg,
             graphe2 = g2
           )
           progress$set(value = 7)
@@ -889,7 +928,7 @@ function(input, output, session) {
   
   ## Nom du rapport fiche
   outNameFicheReport <- reactive({
-    filename <- paste0("rapport_fiche_", input$agence, "_", toupper(substr(input$datafile$name, 1, nchar(input$datafile$name) - 4)), "_au_", format(Sys.Date(), "%Y%m%d"), ".docx")
+    filename <- paste0("rapport_fiche_", input$agence, "_", toupper(substr(input$datafile$name, 1, nchar(input$datafile$name) - 4)),"_", input$espar, "_au_", format(Sys.Date(), "%Y%m%d"), ".docx")
     return(filename)
   })
 
@@ -978,18 +1017,6 @@ function(input, output, session) {
     }
   )
 
-  observeEvent(input$dt, {
-    updateSelectInput(session, "agence", choices = c(Choisir = "", outAGC()))
-  })
-
-  observeEvent(input$agence, {
-    updateSelectInput(session, "forest", choices = c(Choisir = "", outFRT()))
-  })
-
-  observeEvent(input$forest, {
-    updateSelectInput(session, "parcelle", choices = c(Choisir = "", outPRF()))
-  })
-
   polydt <- reactive({
     polydt <- dtdata %>%
       filter(iidtn_dt == input$dt)
@@ -1001,6 +1028,7 @@ function(input, output, session) {
   })
 
   observeEvent(input$dt, {
+    updateSelectInput(session, "agence", choices = c(Choisir = "", outAGC()))
     dt <- polydt()
     if (!is.null(input$dt) && !is.na(st_bbox(dt)$xmin)) {
       dt <- st_transform(dt, 2154) %>%
@@ -1020,6 +1048,9 @@ function(input, output, session) {
   })
 
   observeEvent(input$agence, {
+    updateSelectInput(session, "forest", choices = c(Choisir = "", outFRT()))
+    updateSelectInput(session, "listeclause", choices = c("Choisir CCT" = "", outCCT()))
+    updateSelectInput(session, "parcelle", choices = c(Choisir = " ", outPRF()))
     agc <- polyagc()
     if (!is.null(input$agence) && !is.na(st_bbox(agc)$xmin)) {
       agc <- st_transform(agc, 2154) %>%
@@ -1032,14 +1063,20 @@ function(input, output, session) {
   })
 
   polyfrt <- reactive({
-    polyfrt <- forestdata %>%
-      filter(ccod_frt == input$forest)
+    if (input$forest != " ") {
+      polyfrt <- forestdata %>%
+        filter(ccod_frt == input$forest)
+    } else {
+      polyfrt <- forestdata %>%
+        filter(id == 0)
+    }
     polyfrt
   })
 
   observeEvent(input$forest, {
+    updateSelectInput(session, "parcelle", choices = c(Choisir = " ", outPRF()))
     frt <- polyfrt()
-    if (!is.null(input$forest) && !is.na(st_bbox(frt)$xmin)) {
+    if (input$forest != " " && !is.na(st_bbox(frt)$xmin)) {
       frt <- st_transform(frt, 2154) %>%
         st_centroid() %>%
         st_transform(4326) %>%
@@ -1050,15 +1087,20 @@ function(input, output, session) {
   })
 
   polyprf <- reactive({
-    polyprf <- parcelledata %>%
-      filter(ccod_prf == input$parcelle, ccod_frt == input$forest)
+    if (input$parcelle != " " && input$forest != " "){
+      polyprf <- parcelledata %>%
+        filter(ccod_prf == input$parcelle, ccod_frt == input$forest)
+    } else {
+      polyprf <- parcelledata %>%
+        filter(id == 0)
+    }
     polyprf
   })
 
   observeEvent(input$parcelle, {
     updateSelectInput(session, "listedata", choices = c("Choisir DATA" = "", outDATA()))
     prf <- polyprf()
-    if (!is.null(input$parcelle) && !is.na(st_bbox(prf)$xmin)) {
+    if (input$parcelle != " " && !is.na(st_bbox(prf)$xmin)) {
       prf <- st_transform(prf, 2154) %>%
         st_centroid() %>%
         st_transform(4326) %>%
@@ -1252,6 +1294,9 @@ function(input, output, session) {
       resv <- gftools::describeBy(tabdata(), group = tabdata()$essence)
       incProgress(1)
     })
+    if (!input$mappoint) {
+      echanttab1 <<- resv
+    }
     resv
   })
 
@@ -1665,6 +1710,8 @@ function(input, output, session) {
   output$localmercu <- renderText({
     input$update022
     if (input$update022 == 0) return(NULL)
+    if (is.null(input$Essences03)) return(NULL)
+    if (is.null(input$ut)) return(NULL)
     tab <- tablocalmercu()$Tableau1 %>%
       filter(essence %in% input$Essences03 & ut %in% input$ut)
     withProgress(message = "Comparaison des résultats", style = "notification", value = 0.5, {

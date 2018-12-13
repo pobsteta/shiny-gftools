@@ -404,11 +404,11 @@ fluidPage(
             fluidRow(
               column(
                 width = 4,
-                conditionalPanel("input.agence && input.dt", selectInput("forest", "Forêt :", c(Choisir = "")))
+                conditionalPanel("input.agence && input.dt", selectInput("forest", "Forêt :", c(Choisir = " ")))
               ),
               column(
                 width = 1,
-                conditionalPanel("input.forest && input.agence && input.dt", selectInput("parcelle", "Parcelle :", c(Choisir = "")))
+                conditionalPanel("input.forest && input.agence && input.dt", selectInput("parcelle", "Parcelle :", c(Choisir = " ")))
               ),
               column(
                 width = 2,
