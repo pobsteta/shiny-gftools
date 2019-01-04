@@ -30,6 +30,8 @@ library(xtable)
 library(sf)
 library(yarrr)
 library(grid)
+library(pander)
+library(captioner)
 
 ## API google
 

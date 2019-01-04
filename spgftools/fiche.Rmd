@@ -136,7 +136,7 @@ graphe <- figs(name = "graphe", caption = "Boxplot de comparaison des données �
 params$graphe
 ```
 
-## Les échantillons (ECH) et et zones (SER, RN250 ou RF250) sont-ils différents ?
+## Les échantillons (ECH) et zones (SER, RN250 ou RF250) sont-ils différents ?
 ```{r shapiro, fig.height=5.5, fig.width=10, fig.cap=shap}
 shap <- figs(name = "shap", caption = "Graphes Q-Q Plot et fréquence des données des échantillons.")
 ltar <- c("numSchR","numSchL","numAlg")
