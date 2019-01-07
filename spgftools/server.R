@@ -102,7 +102,7 @@ function(input, output, session) {
 
   observeEvent(input$clausefile, {
     fileclause()
-    updateTabsetPanel(session, "inTabset02", selected = "Graphe")
+    updateTabsetPanel(session, "inTabset02", selected = "Data/Mercuriale/Clause")
   })
 
   observe({
