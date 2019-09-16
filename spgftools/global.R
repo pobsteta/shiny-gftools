@@ -32,6 +32,8 @@ library(yarrr)
 library(grid)
 library(pander)
 library(captioner)
+library(broom)
+library(tidyverse)
 
 ## API google
 
@@ -361,6 +363,24 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
         numSchL = E_Vbftot7cm / 5 * 90000 / diam / (diam - 5) - 8,
         numAlg = E_Vbftot7cm * 28000000 / (310000 - 45200 * diam + 2390 * diam^2 - 2.9 * diam^3) - 8
       )
+    tab.h <- tab %>%
+      dplyr::select(essence, diam, Classe, htot, E_Vbftot7cm, numSchR, numSchL, numAlg) %>%
+      tidyr::gather(Type, Num, -essence, -diam, -Classe, -htot, -E_Vbftot7cm) %>%
+      dplyr::mutate(Type = factor(Type, levels = c("numSchR", "numSchL", "numAlg"))) %>%
+      dplyr::mutate(Classe = factor(Classe))
+    p <- c(0.10, 0.35, 0.65, 0.90)
+    p_names <- purrr::map_chr(p, ~paste0(.x*100))
+    p_fh <- purrr::map(p, ~partial(quantile, probs = .x, na.rm = TRUE)) %>%
+      purrr::set_names(nm = paste0("h",p_names))
+    p_fn <- purrr::map(p, ~partial(quantile, probs = .x, na.rm = TRUE)) %>%
+      purrr::set_names(nm = paste0("n",p_names))
+    tab.h1 <- tab.h %>%
+      group_by(essence, Classe, Type) %>%
+      summarize_at(vars(htot), funs(!!!p_fh))
+    tab.h2 <- tab.h %>%
+      group_by(essence, Classe, Type) %>%
+      summarize_at(vars(Num), funs(!!!p_fn))
+    tab.n <- merge(tab.h1, tab.h2)
     res <- tab %>%
       dplyr::group_by(essence, cat) %>%
       dplyr::summarise_at(c("numSchR", "numSchL", "numAlg"), funs(mean, var))
@@ -519,8 +539,37 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
             geom_bar(stat = "identity", position = "stack") +
             facet_grid(agence + essence ~ classe) +
             scale_alpha_manual(values = c(1, 0.1))
-          lres[[sp]] <- list(tab.r, p, txt, table5)
-          names(lres[[sp]]) <- c("Tableau3", "Graphe1", "Texte", "Tableau4")
+          tabo <- tab.n[which(tab.n$essence %in% c(nomess)), ] 
+          tab.a <- tabo %>% 
+            arrange(essence, Type, Classe)
+          classd <- as.numeric(levels(tabo$Classe))[tabo$Classe]
+          q <- ggplot() +
+            geom_point(data = tab.h[which(tab.h$essence %in% c(nomess)), ], aes(x = diam, y = htot)) + 
+            facet_grid(Type ~ .) +
+            ggtitle(nomess) +
+            geom_smooth(data = tabo, 
+                        aes(x = classd, y = h10), 
+                        span = 1, method = "loess", se = TRUE, alpha = 0.2, size = 0.5, col = "red") +
+            geom_label_repel(data = tabo,
+                             aes(x = classd, y = h10, label = round(n10, digits = 0)), col = "red", size = 2.5) +
+            geom_smooth(data = tabo,
+                        aes(x = classd, y = h35), 
+                        span = 1, method = "loess", se = TRUE, alpha = 0.2, size = 0.5) +
+            geom_label_repel(data = tabo,
+                             aes(x = classd, y = h35, label = round(n35, digits = 0)), size = 2.5) +
+            geom_smooth(data = tabo,
+                        aes(x = classd, y = h65), 
+                        span = 1, method = "loess", se = TRUE, alpha = 0.2, size = 0.5, col = "red") +
+            geom_label_repel(data = tabo,
+                             aes(x = classd, y = h65, label = round(n65, digits = 0)), col = "red", size = 2.5) +
+            geom_smooth(data = tabo,
+                        aes(x = classd, y = h90), 
+                        span = 1, method = "loess", se = TRUE, alpha = 0.2, size = 0.5) +
+            geom_label_repel(data = tabo,
+                             aes(x = classd, y = h90, label = round(n90, digits = 0)), size = 2.5) +
+            theme(legend.position="none")
+          lres[[sp]] <- list(tab.r, p, txt, table5, tab.h, tab.a, q)
+          names(lres[[sp]]) <- c("Tableau3", "Graphe1", "Texte", "Tableau4", "Tableau5", "Tableau6", "Graphe2")
         }
       }
 

@@ -56,6 +56,8 @@ for (reg in 1:length(unique(params$shape["code"]$code))) {
     left_join(params$res[[reg]]$Tableau2[,c(1,2,9)], by=c(essence="essence", categorie="categorie"))
 }
 names(df) <- c("Essence", "Catégorie", unique(params$shape["code"]$code))
+cat("\n")
+cat("\n")
 knitr::kable(df, caption = paste("Meilleur tarif par région", toupper(params$typzonecalc)))
 ```
 
@@ -66,31 +68,39 @@ for (reg in 1:length(unique(params$shape["code"]$code))) {
   cat("\n")
   tab2 <- params$res[[reg]]$Tableau2
   tab1 <- params$res[[reg]]$Tableau1
-  try(print(params$res[[reg]]$Carte, scalebox = 0.5), TRUE)
-  if (!is.null(tab2)) {
-    print(xtable(tab2, caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-", unique(params$shape["reg"]$reg)[reg])), comment = FALSE)
-  }
-  if (!is.null(tab1)) {
-    print(xtable(tab1, digits = 0, caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-", unique(params$shape["reg"]$reg)[reg])),
-        comment = FALSE, include.rownames = FALSE, rotate.colnames = TRUE, scalebox = 0.7)
-  }
-  cat("\\newpage ")
-  cat("\n")
-  for (ess in 1:length(params$essence)) {
-    if (!is.null(params$res[[reg]][["Species"]][[ess]])) {
-      for (i in 1:6) {cat(params$res[[reg]][["Species"]][[ess]]$Texte[i], "\n")}
-      cat("\n")
-      print(params$res[[reg]][["Species"]][[ess]]$Graphe1)
-      print(xtable(params$res[[reg]][["Species"]][[ess]]$Tableau4, digits=0,
-      caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-",
-                       unique(params$shape["reg"]$reg)[reg])), comment = FALSE, scalebox = 0.8, include.rownames = FALSE)
-    } else {
-      cat("\n")
-      print("AUCUNE DONNÉE POUR L'ESSENCE, POUR L'EXERCICE ET LA REGION CONSIDÉRÉE.")
-      cat("\n")
-      next
+  tryCatch({
+    print(params$res[[reg]]$Carte, scalebox = 0.5)
+    if (!is.null(tab2)) {
+      print(xtable(tab2, caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-", unique(params$shape["reg"]$reg)[reg])), comment = FALSE)
+    }
+    if (!is.null(tab1)) {
+      print(xtable(tab1, digits = 0, caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-", unique(params$shape["reg"]$reg)[reg])),
+          comment = FALSE, include.rownames = FALSE, rotate.colnames = TRUE, scalebox = 0.7)
     }
     cat("\\newpage ")
-  }
+    cat("\n")
+    for (ess in 1:length(params$essence)) {
+      if (!is.null(params$res[[reg]][["Species"]][[ess]])) {
+        for (i in 1:6) {cat(params$res[[reg]][["Species"]][[ess]]$Texte[i], "\n")}
+        cat("\n")
+        print(params$res[[reg]][["Species"]][[ess]]$Graphe1)
+        print(xtable(params$res[[reg]][["Species"]][[ess]]$Tableau4, digits=0,
+                       caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-",
+                                        unique(params$shape["reg"]$reg)[reg])), comment = FALSE, scalebox = 0.8, include.rownames = FALSE)
+        try(print(xtable(params$res[[reg]][["Species"]][[ess]]$Tableau6, digits=0,
+                       caption = paste0("Région : ", unique(params$shape["code"]$code)[reg], "-",
+                                        unique(params$shape["reg"]$reg)[reg])), comment = FALSE, scalebox = 0.8, include.rownames = FALSE))
+        try(print(params$res[[reg]][["Species"]][[ess]]$Graphe2), TRUE)
+        cat("\\newpage ")
+        cat("\n")
+      }
+    }
+  }, error = function(err){
+    cat("\n")
+    print(paste("AUCUNE DONNÉE CALCULÉE POUR LA REGION", unique(params$shape["code"]$code)[reg], "-",
+                                        unique(params$shape["reg"]$reg)[reg], "."))
+    cat("\\newpage ")
+    cat("\n")
+  }) # end tryCatch
 }
 ```

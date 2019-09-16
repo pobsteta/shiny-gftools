@@ -313,7 +313,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (1/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (1/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -326,7 +326,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (2/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (2/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -339,7 +339,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (3/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (3/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -352,7 +352,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (4/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (4/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -365,7 +365,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (5/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (5/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -378,7 +378,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (6/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (6/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -391,7 +391,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (7/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (7/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -404,7 +404,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (8/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (8/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -417,7 +417,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (9/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (9/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -430,7 +430,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (10/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (10/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -443,7 +443,7 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (11/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (11/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
@@ -456,12 +456,51 @@ function(input, output, session) {
     input$update02
     if (input$update02 == 0) return(NULL)
     isolate({
-      withProgress(message = "Création du graphique (12/12)", style = "notification", value = 0.5, {
+      withProgress(message = "Création du graphique (12/15)", style = "notification", value = 0.5, {
         Sys.sleep(0.25)
         p <- plotdata()
         incProgress(1)
       })
       p$Graphe12
+    })
+  })
+  
+  output$plotcsv13 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = "Création du graphique (13/15)", style = "notification", value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe13
+    })
+  })
+
+  output$plotcsv14 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = "Création du graphique (14/15)", style = "notification", value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe14
+    })
+  })
+
+  output$plotcsv15 <- renderPlot({
+    input$update02
+    if (input$update02 == 0) return(NULL)
+    isolate({
+      withProgress(message = "Création du graphique (15/15)", style = "notification", value = 0.5, {
+        Sys.sleep(0.25)
+        p <- plotdata()
+        incProgress(1)
+      })
+      p$Graphe15
     })
   })
 
@@ -521,7 +560,7 @@ function(input, output, session) {
     }
   })
 
-  output$plotcsv13 <- renderPlot({
+  output$plotcsv16 <- renderPlot({
     if (!is.null(input$tarif) & input$tarif != "" & input$espar != "Toutes" & !is.null(input$espar) & !(is.null(plotdata()$Tableau4))) {
       plotgraphe()
     }
@@ -934,7 +973,7 @@ function(input, output, session) {
 
   ## Nom du rapport agence
   outNameAgenceReport <- reactive({
-    filename <- paste0("rapport_agence_", input$agence, "_", toupper(input$zonecalc), "_au_", format(Sys.Date(), "%Y%m%d"), ".pdf")
+    filename <- paste0("rapport_agence_", input$agence, "_", input$espar, "_", toupper(input$zonecalc), "_au_", format(Sys.Date(), "%Y%m%d"), ".pdf")
     return(filename)
   })
 
@@ -1318,7 +1357,7 @@ function(input, output, session) {
   output$saveBtnData <- downloadHandler(
     # Nom par défaut :
     filename = function() {
-      paste0("Data_", Sys.Date(), ".csv")
+      paste0("Data_", input$agence, "_", input$nomData, ".csv")
     },
     content = function(file) {
       write.csv2(tabdata(), file, row.names = FALSE)

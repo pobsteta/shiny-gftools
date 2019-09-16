@@ -246,6 +246,18 @@ fluidPage(
               column(
                 width = 4,
                 plotOutput("plotcsv12", height = 700)
+              ),
+              column(
+                width = 4,
+                plotOutput("plotcsv13", height = 700)
+              ),
+              column(
+                width = 4,
+                plotOutput("plotcsv14", height = 700)
+              ),
+              column(
+                width = 4,
+                plotOutput("plotcsv15", height = 700)
               )
             )
           ),
@@ -365,7 +377,7 @@ fluidPage(
               ),
               column(
                 3,
-                plotOutput("plotcsv13", height = 700)
+                plotOutput("plotcsv16", height = 700)
               )
             ), # end fluidrow
             fluidRow(
