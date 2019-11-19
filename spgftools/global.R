@@ -314,31 +314,56 @@ BestTarifFindSch <- function(mercuriale = NULL, decemerge = 7, typvolemerge = "t
       dplyr::inner_join(mer, by = c(Classe = "cdiam"))
     ## recherche la decoupe emerge dans les clauses ou prend decemerge
     defo <- ifelse(!is.null(clause), clo[clo$ess %in% "Defaut", "dec"][[1]], decemerge)
-    tab1 <- tab %>%
+    # on gere les essences essence
+    tab.0 <- tab %>% 
+      dplyr::left_join(clo, by = c(essence = "ess")) %>% 
+      dplyr::filter(
+        !is.na(dec),
+        Classe >= dmin & Classe <= dmax
+      ) 
+    # on gere les essences regroupees dans les clauses (Chene, Pin)
+    tab.1 <- tab %>% 
+      dplyr::left_join(clo, by = c(essence = "ess")) %>% 
+      dplyr::filter(is.na(dec)) %>% 
+      dplyr::select(-dmin, -dmax, -dec) %>% 
       dplyr::mutate(clo = splitv(esscct)) %>%
-      dplyr::left_join(clo, by = c(clo = "ess"))
-    # on gere les essences esscct decrites dans la mercuriale
-    tab2 <- tab1 %>%
-      dplyr::filter(!is.na(dmin)) %>%
-      dplyr::filter(Classe >= dmin & Classe <= dmax) %>%
-      dplyr::select(espar, htot, hdec, diam, essence, ess, Classe, fr, clo, tarif, houppier, hauteur, dmin, dmax, dec)
-    # on gere les essences esscct non decrites dans la mercuriale
-    tab3 <- tab1 %>%
-      dplyr::filter(is.na(dmin)) %>%
-      dplyr::select(espar, htot, hdec, diam, essence, ess, Classe, fr, clo, tarif, houppier, hauteur) %>%
-      dplyr::left_join(clo, by = c(fr = "ess"))
-    tab4 <- dplyr::bind_rows(tab2, tab3) %>%
-      dplyr::mutate(defaut = defo)
-    tab4$decemerge <- ifelse(!is.na(tab4$dmin) & tab4$Classe >= tab4$dmin, tab4$dec, tab4$defaut)
-    # on gere une mercuriale avec seulement Defaut
-    if (nrow(clo) == 1) {
-      tab4$dmin <- ifelse(is.na(tab4$dmin), clo[1, 2]$dmin)
-      tab4$dmax <- ifelse(is.na(tab4$dmax), clo[1, 3]$dmax)
-      tab4$dec <- ifelse(is.na(tab4$dec), clo[1, 4]$dec)
-    }
-    tab <- tab4 %>%
+      dplyr::left_join(clo, by = c(clo = "ess")) %>% 
+      dplyr::filter(
+        !is.na(dec),
+        Classe >= dmin & Classe <= dmax
+      ) 
+    # on gere les essences Autres
+    tab.2 <- tab %>% 
+      dplyr::left_join(clo, by = c(essence = "ess")) %>% 
+      dplyr::filter(is.na(dec)) %>% 
+      dplyr::select(-dmin, -dmax, -dec) %>% 
+      dplyr::mutate(clo = splitv(esscct)) %>%
+      dplyr::left_join(clo, by = c(clo = "ess")) %>% 
+      dplyr::filter(is.na(dec)) %>% 
+      dplyr::select(-dmin, -dmax, -dec) %>% 
+      dplyr::left_join(clo, by = c(fr = "ess")) %>% 
+      dplyr::filter(
+        !is.na(dec),
+        Classe >= dmin & Classe <= dmax
+      ) 
+    # on gere essence Defaut
+    tab.3 <- dplyr::anti_join(tab, dplyr::bind_rows(tab.0, tab.1, tab.2)) %>% 
+      mutate(
+        dmin = clo[1, 2]$dmin,
+        dmax = clo[1, 3]$dmax,
+        dec = clo[1, 4]$dec
+      ) %>% 
+      dplyr::filter(
+        !is.na(dec),
+        Classe >= dmin & Classe <= dmax
+      ) 
+    # on merge
+    tab <- dplyr::bind_rows(tab.0, tab.1, tab.2, tab.3) %>% 
+      dplyr::mutate(
+        defaut = defo,
+        decemerge = ifelse(!is.na(dmin) & Classe >= dmin, dec, defaut)
+      ) %>% 
       dplyr::select(espar, essence, ess, diam, Classe, htot, hdec, decemerge, tarif, hauteur, houppier)
-
     tab <- cbind(tab, E_VbftigCom = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "tige", dec = tab$decemerge))
     tab <- cbind(tab, E_Vbftot7cm = TarEmerge(c130 = pi * tab$diam, htot = tab$htot, hdec = tab$hdec, espar = tab$espar, typevol = "total", dec = 7)) %>%
       dplyr::mutate(E_PHouppiers = E_Vbftot7cm / E_VbftigCom - 1) %>%
